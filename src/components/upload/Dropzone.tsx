@@ -1,15 +1,23 @@
-import { useCallback, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useState, type ChangeEvent, type DragEvent } from 'react'
 import { rpc } from '@/lib/rpc'
 
 export function Dropzone() {
   const [status, setStatus] = useState('Arrastra un PDF aquí, o haz clic para elegir uno')
 
+  useEffect(
+    () =>
+      rpc.onExtractionProgress((current, total) => {
+        setStatus(`Extrayendo… página ${current} de ${total}`)
+      }),
+    [],
+  )
+
   const handleFile = useCallback(async (file: File) => {
     setStatus(`Extrayendo "${file.name}"…`)
     const buffer = await file.arrayBuffer()
-    const result = await rpc.extract(buffer)
+    const result = await rpc.extract(buffer, file.name)
     console.log(result)
-    setStatus(`"${file.name}": ${result.pageCount} páginas`)
+    setStatus(`"${file.name}": ${result.pageCount} páginas, ${result.imageCount} imágenes — jobId ${result.jobId}`)
   }, [])
 
   const onDrop = useCallback(

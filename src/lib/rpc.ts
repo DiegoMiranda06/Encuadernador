@@ -10,5 +10,9 @@ function getClient(): RpcClient {
 
 /** Única puerta de entrada al worker del pipeline — ningún componente llama `postMessage` directo. */
 export const rpc = {
-  extract: (file: ArrayBuffer) => getClient().call('extract', { file }),
+  extract: (file: ArrayBuffer, filename: string) => getClient().call('extract', { file, filename }),
+  onExtractionProgress: (handler: (current: number, total: number) => void) =>
+    getClient().onProgress((message) => {
+      if (message.phase === 'extracting') handler(message.current, message.total)
+    }),
 }

@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
-import * as mupdf from 'mupdf'
+import { extractDocument } from '@/ir/extract'
+import type { JobRecord } from '@/storage/db'
+import { saveExtractedJob } from '@/storage/jobs'
 import type { WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
 
 declare const self: DedicatedWorkerGlobalScope
@@ -11,13 +13,22 @@ type Handlers = {
 }
 
 const handlers: Handlers = {
-  extract({ file }) {
-    const document = mupdf.Document.openDocument(file, 'application/pdf')
-    try {
-      return { pageCount: document.countPages() }
-    } finally {
-      document.destroy()
+  async extract({ file, filename }) {
+    const { document, assets } = await extractDocument(file, filename, (progress) => {
+      self.postMessage({ type: 'progress', phase: 'extracting', ...progress })
+    })
+
+    const job: JobRecord = {
+      jobId: crypto.randomUUID(),
+      status: 'extracted',
+      createdAt: Date.now(),
+      filename,
+      pageCount: document.source.pageCount,
+      overrideKeys: [],
     }
+    await saveExtractedJob(job, document, assets)
+
+    return { jobId: job.jobId, pageCount: document.source.pageCount, imageCount: assets.size }
   },
 }
 
