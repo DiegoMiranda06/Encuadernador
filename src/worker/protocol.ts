@@ -2,10 +2,13 @@
 
 export interface ExtractInput {
   file: ArrayBuffer
+  filename: string
 }
 
 export interface ExtractOutput {
+  jobId: string
   pageCount: number
+  imageCount: number
 }
 
 /** Un método por entrada del pipeline. Se amplía en pasos futuros (applyPipeline, renderChapter, ...). */
