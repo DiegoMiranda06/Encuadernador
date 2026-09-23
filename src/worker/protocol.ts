@@ -20,10 +20,19 @@ export interface ApplyPipelineInput {
 
 export type ApplyPipelineOutput = PipelineRunResult & { configHash: string }
 
-/** Un método por entrada del pipeline. Se amplía en pasos futuros (renderChapter, ...). */
+export interface RenderChapterInput {
+  jobId: string
+  chapterIndex: number
+  configHash: string
+}
+
+export type RenderChapterOutput = string
+
+/** Un método por entrada del pipeline. Se amplía en pasos futuros. */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
   applyPipeline: { input: ApplyPipelineInput; output: ApplyPipelineOutput }
+  renderChapter: { input: RenderChapterInput; output: RenderChapterOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap

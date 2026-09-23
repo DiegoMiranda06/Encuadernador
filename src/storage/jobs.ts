@@ -56,6 +56,12 @@ export async function getAssetsForDocument(document: IRDocument): Promise<Map<st
   return assets
 }
 
+/** El Blob crudo de una imagen — para armar una `blob:` URL de preview sin pasar por Uint8Array. */
+export async function getAssetBlob(assetId: string): Promise<Blob | undefined> {
+  const db = await openEncuadernadorDB()
+  return db.get('assets', assetId)
+}
+
 /** Overrides guardados del editor manual (Paso 9) para este trabajo, indexados por chapterKey. */
 export async function getOverridesForJob(jobId: string): Promise<Map<string, string>> {
   const db = await openEncuadernadorDB()
