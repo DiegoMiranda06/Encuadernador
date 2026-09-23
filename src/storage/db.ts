@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { IRDocument } from '@/ir/schema'
+import type { PipelineConfig } from '@/model/config'
 
 /** El equivalente al manifiesto de un trabajo — v1 de la v1, adaptado a storage de navegador. */
 export interface JobRecord {
@@ -8,8 +9,7 @@ export interface JobRecord {
   createdAt: number
   filename: string
   pageCount: number
-  /** PipelineConfig — se define en el Paso 4/5. */
-  config?: unknown
+  config?: PipelineConfig
   /** Rect normalizado del recorte de portada — se define en el Paso 10. */
   coverCrop?: unknown
   overrideKeys: string[]

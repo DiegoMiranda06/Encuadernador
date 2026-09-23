@@ -43,6 +43,33 @@ export async function getIRDocument(jobId: string): Promise<IRDocument | undefin
   return db.get('irDocuments', jobId)
 }
 
+/** Los bytes reales de cada imagen del documento — el IR solo guarda el assetId. */
+export async function getAssetsForDocument(document: IRDocument): Promise<Map<string, Uint8Array>> {
+  const db = await openEncuadernadorDB()
+  const assets = new Map<string, Uint8Array>()
+  await Promise.all(
+    collectAssetIds(document).map(async (assetId) => {
+      const blob = await db.get('assets', assetId)
+      if (blob) assets.set(assetId, new Uint8Array(await blob.arrayBuffer()))
+    }),
+  )
+  return assets
+}
+
+/** Overrides guardados del editor manual (Paso 9) para este trabajo, indexados por chapterKey. */
+export async function getOverridesForJob(jobId: string): Promise<Map<string, string>> {
+  const db = await openEncuadernadorDB()
+  const overrides = new Map<string, string>()
+  let cursor = await db.transaction('overrides').store.openCursor()
+  while (cursor) {
+    if (typeof cursor.key === 'string' && cursor.key.startsWith(`${jobId}:`)) {
+      overrides.set(cursor.value.chapterKey, cursor.value.html)
+    }
+    cursor = await cursor.continue()
+  }
+  return overrides
+}
+
 export async function deleteJob(jobId: string): Promise<void> {
   const db = await openEncuadernadorDB()
   const document = await db.get('irDocuments', jobId)

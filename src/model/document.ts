@@ -6,6 +6,8 @@ export interface Chapter {
   key: string
   title: string
   blocks: IRBlock[]
+  /** HTML saneado del editor manual (Paso 9), aplicado por Paso 5 si hay uno guardado para esta key. */
+  overrideHtml?: string
 }
 
 export interface DocModel {
