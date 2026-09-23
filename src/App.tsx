@@ -1,12 +1,20 @@
-import { Dropzone } from '@/components/upload/Dropzone'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { HashRouter, Route, Routes } from 'react-router-dom'
+import { JobSettingsPage } from '@/pages/JobSettingsPage'
+import { UploadPage } from '@/pages/UploadPage'
+
+const queryClient = new QueryClient()
 
 function App() {
   return (
-    <main style={{ maxWidth: 480, margin: '96px auto', padding: '0 16px' }}>
-      <h1>Encuadernador</h1>
-      <p>PDF → EPUB, 100% en el navegador.</p>
-      <Dropzone />
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/job/:jobId" element={<JobSettingsPage />} />
+        </Routes>
+      </HashRouter>
+    </QueryClientProvider>
   )
 }
 
