@@ -1,4 +1,6 @@
 /** Tipos del protocolo RPC entre el hilo principal y el Web Worker del pipeline. */
+import type { PipelineConfig } from '@/model/config'
+import type { PipelineRunResult } from './applyPipeline'
 
 export interface ExtractInput {
   file: ArrayBuffer
@@ -11,9 +13,17 @@ export interface ExtractOutput {
   imageCount: number
 }
 
-/** Un método por entrada del pipeline. Se amplía en pasos futuros (applyPipeline, renderChapter, ...). */
+export interface ApplyPipelineInput {
+  jobId: string
+  config: PipelineConfig
+}
+
+export type ApplyPipelineOutput = PipelineRunResult & { configHash: string }
+
+/** Un método por entrada del pipeline. Se amplía en pasos futuros (renderChapter, ...). */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
+  applyPipeline: { input: ApplyPipelineInput; output: ApplyPipelineOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap

@@ -1,8 +1,9 @@
 /// <reference lib="webworker" />
 import { extractDocument } from '@/ir/extract'
 import type { JobRecord } from '@/storage/db'
-import { saveExtractedJob } from '@/storage/jobs'
-import type { WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
+import { getAssetsForDocument, getIRDocument, getOverridesForJob, saveExtractedJob } from '@/storage/jobs'
+import { computeConfigHash, runPipeline } from './applyPipeline'
+import type { ApplyPipelineOutput, WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -11,6 +12,9 @@ type Handlers = {
     input: WorkerRequestMap[M]['input'],
   ) => WorkerRequestMap[M]['output'] | Promise<WorkerRequestMap[M]['output']>
 }
+
+// Se pierde al recargar la página — aceptable, el recálculo es rápido (Paso 5 del blueprint).
+const pipelineCache = new Map<string, ApplyPipelineOutput>()
 
 const handlers: Handlers = {
   async extract({ file, filename }) {
@@ -29,6 +33,22 @@ const handlers: Handlers = {
     await saveExtractedJob(job, document, assets)
 
     return { jobId: job.jobId, pageCount: document.source.pageCount, imageCount: assets.size }
+  },
+
+  async applyPipeline({ jobId, config }) {
+    const document = await getIRDocument(jobId)
+    if (!document) throw new Error(`No se encontró el documento IR para el trabajo ${jobId}`)
+
+    const configHash = await computeConfigHash(document.source.sha256, config)
+    const cacheKey = `${jobId}:${configHash}`
+    const cached = pipelineCache.get(cacheKey)
+    if (cached) return cached
+
+    const [assets, overrides] = await Promise.all([getAssetsForDocument(document), getOverridesForJob(jobId)])
+    const result = await runPipeline(document, assets, config, overrides)
+    const output: ApplyPipelineOutput = { ...result, configHash }
+    pipelineCache.set(cacheKey, output)
+    return output
   },
 }
 
