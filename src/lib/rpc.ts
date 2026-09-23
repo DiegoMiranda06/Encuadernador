@@ -1,3 +1,4 @@
+import type { CropRect } from '@/cover/render'
 import type { LanguageDecision } from '@/language/types'
 import type { PipelineConfig } from '@/model/config'
 import { RpcClient } from '@/worker/rpcClient'
@@ -20,6 +21,9 @@ export const rpc = {
     getClient().call('confirmLanguage', { jobId, decisions }),
   saveOverride: (jobId: string, chapterKey: string, html: string) =>
     getClient().call('saveOverride', { jobId, chapterKey, html }),
+  extractCoverCandidates: (jobId: string) => getClient().call('extractCoverCandidates', { jobId }),
+  renderCover: (jobId: string, candidateId: string, sourceBlob: Blob, crop: CropRect) =>
+    getClient().call('renderCover', { jobId, candidateId, sourceBlob, crop }),
   onExtractionProgress: (handler: (current: number, total: number) => void) =>
     getClient().onProgress((message) => {
       if (message.phase === 'extracting') handler(message.current, message.total)

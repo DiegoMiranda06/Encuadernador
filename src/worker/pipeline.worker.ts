@@ -1,4 +1,6 @@
 /// <reference lib="webworker" />
+import { extractCoverCandidates } from '@/cover/extract'
+import { renderCover } from '@/cover/render'
 import { renderChapterXhtml } from '@/epub/render'
 import { extractDocument } from '@/ir/extract'
 import type { JobRecord } from '@/storage/db'
@@ -8,7 +10,10 @@ import {
   getIRDocument,
   getLanguageDecisionsForJob,
   getOverridesForJob,
+  getSourceFile,
+  saveCover,
   saveExtractedJob,
+  saveJobCoverCrop,
   saveLanguageDecisions,
   saveOverride,
 } from '@/storage/jobs'
@@ -67,7 +72,7 @@ const handlers: Handlers = {
       pageCount: document.source.pageCount,
       overrideKeys: [],
     }
-    await saveExtractedJob(job, document, assets)
+    await saveExtractedJob(job, document, assets, file)
 
     return { jobId: job.jobId, pageCount: document.source.pageCount, imageCount: assets.size }
   },
@@ -121,6 +126,22 @@ const handlers: Handlers = {
       language: cached.metadata.language,
       resolveAssetHref: (assetId) => hrefByAssetId.get(assetId) ?? '',
     })
+  },
+
+  async extractCoverCandidates({ jobId }) {
+    const [sourceFile, document] = await Promise.all([getSourceFile(jobId), getIRDocument(jobId)])
+    if (!sourceFile) throw new Error(`No se encontró el PDF original del trabajo ${jobId}`)
+    if (!document) throw new Error(`No se encontró el documento IR para el trabajo ${jobId}`)
+
+    const assets = await getAssetsForDocument(document)
+    const sourceBuffer = await sourceFile.arrayBuffer()
+    return extractCoverCandidates(sourceBuffer, document, assets)
+  },
+
+  async renderCover({ jobId, candidateId, sourceBlob, crop }) {
+    const cover = await renderCover(sourceBlob, crop)
+    await Promise.all([saveCover(jobId, cover), saveJobCoverCrop(jobId, { candidateId, ...crop })])
+    return cover
   },
 }
 

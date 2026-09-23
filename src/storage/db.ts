@@ -11,8 +11,8 @@ export interface JobRecord {
   filename: string
   pageCount: number
   config?: PipelineConfig
-  /** Rect normalizado del recorte de portada — se define en el Paso 10. */
-  coverCrop?: unknown
+  /** Candidata + rect normalizado (0-1) del recorte de portada ya confirmado (Paso 10). */
+  coverCrop?: { candidateId: string; x: number; y: number; width: number; height: number }
   overrideKeys: string[]
   error?: string
 }
@@ -43,12 +43,23 @@ interface EncuadernadorDB extends DBSchema {
     key: string
     value: LanguageDecision & { jobId: string; blockId: string }
   }
+  /**
+   * El PDF crudo, tal cual se subió — lo único que se guarda dos veces (también vive, ya
+   * procesado, en `irDocuments`/`assets`). Hace falta para volver a abrir el documento con
+   * mupdf.js y renderizar la página 1 bajo demanda (Paso 10, `extractCoverCandidates`), que
+   * puede llamarse mucho después de la extracción original, cuando el `Document` de mupdf ya
+   * se destruyó.
+   */
+  sourceFiles: {
+    key: string
+    value: Blob
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<EncuadernadorDB>> | null = null
 
 export function openEncuadernadorDB(): Promise<IDBPDatabase<EncuadernadorDB>> {
-  dbPromise ??= openDB<EncuadernadorDB>('encuadernador', 2, {
+  dbPromise ??= openDB<EncuadernadorDB>('encuadernador', 3, {
     upgrade(database) {
       if (!database.objectStoreNames.contains('jobs')) database.createObjectStore('jobs', { keyPath: 'jobId' })
       if (!database.objectStoreNames.contains('irDocuments')) database.createObjectStore('irDocuments')
@@ -56,6 +67,7 @@ export function openEncuadernadorDB(): Promise<IDBPDatabase<EncuadernadorDB>> {
       if (!database.objectStoreNames.contains('overrides')) database.createObjectStore('overrides')
       if (!database.objectStoreNames.contains('covers')) database.createObjectStore('covers')
       if (!database.objectStoreNames.contains('languageDecisions')) database.createObjectStore('languageDecisions')
+      if (!database.objectStoreNames.contains('sourceFiles')) database.createObjectStore('sourceFiles')
     },
   })
   return dbPromise

@@ -16,12 +16,14 @@ export async function saveExtractedJob(
   job: JobRecord,
   document: IRDocument,
   assets: Map<string, Uint8Array>,
+  sourceFile: ArrayBuffer,
 ): Promise<void> {
   const db = await openEncuadernadorDB()
-  const tx = db.transaction(['jobs', 'irDocuments', 'assets'], 'readwrite')
+  const tx = db.transaction(['jobs', 'irDocuments', 'assets', 'sourceFiles'], 'readwrite')
   await Promise.all([
     tx.objectStore('jobs').put(job),
     tx.objectStore('irDocuments').put(document, job.jobId),
+    tx.objectStore('sourceFiles').put(new Blob([sourceFile], { type: 'application/pdf' }), job.jobId),
     ...Array.from(assets, ([assetId, bytes]) =>
       tx.objectStore('assets').put(new Blob([new Uint8Array(bytes)], { type: 'image/png' }), assetId),
     ),
@@ -61,6 +63,30 @@ export async function getAssetsForDocument(document: IRDocument): Promise<Map<st
 export async function getAssetBlob(assetId: string): Promise<Blob | undefined> {
   const db = await openEncuadernadorDB()
   return db.get('assets', assetId)
+}
+
+/** El PDF original — para volver a abrirlo con mupdf.js y renderizar la página 1 (Paso 10). */
+export async function getSourceFile(jobId: string): Promise<Blob | undefined> {
+  const db = await openEncuadernadorDB()
+  return db.get('sourceFiles', jobId)
+}
+
+/** La portada final ya recortada y redimensionada (Paso 10) — la reusa el build del EPUB (Paso 11). */
+export async function saveCover(jobId: string, cover: Blob): Promise<void> {
+  const db = await openEncuadernadorDB()
+  await db.put('covers', cover, jobId)
+}
+
+export async function getCover(jobId: string): Promise<Blob | undefined> {
+  const db = await openEncuadernadorDB()
+  return db.get('covers', jobId)
+}
+
+export async function saveJobCoverCrop(jobId: string, coverCrop: JobRecord['coverCrop']): Promise<void> {
+  const db = await openEncuadernadorDB()
+  const job = await db.get('jobs', jobId)
+  if (!job) throw new Error(`No se encontró el trabajo ${jobId}`)
+  await db.put('jobs', { ...job, coverCrop })
 }
 
 /** Guarda un override de capítulo — el HTML ya debe venir saneado con dompurify (Paso 9). */
@@ -120,7 +146,10 @@ export async function deleteJob(jobId: string): Promise<void> {
   const document = await db.get('irDocuments', jobId)
   const assetIds = document ? collectAssetIds(document) : []
 
-  const tx = db.transaction(['jobs', 'irDocuments', 'assets', 'overrides', 'covers', 'languageDecisions'], 'readwrite')
+  const tx = db.transaction(
+    ['jobs', 'irDocuments', 'assets', 'overrides', 'covers', 'languageDecisions', 'sourceFiles'],
+    'readwrite',
+  )
 
   // Overrides y decisiones de idioma se indexan por `${jobId}:...` — se recorren por prefijo.
   const overridesStore = tx.objectStore('overrides')
@@ -141,6 +170,7 @@ export async function deleteJob(jobId: string): Promise<void> {
     tx.objectStore('jobs').delete(jobId),
     tx.objectStore('irDocuments').delete(jobId),
     tx.objectStore('covers').delete(jobId),
+    tx.objectStore('sourceFiles').delete(jobId),
     ...assetIds.map((assetId) => tx.objectStore('assets').delete(assetId)),
     tx.done,
   ])
