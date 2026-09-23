@@ -53,6 +53,9 @@ export function JobSettingsPage() {
           <Link to={`/job/${jobId}/portada`} className="text-[12px] text-primary hover:text-primary-hover">
             Portada
           </Link>
+          <Link to={`/job/${jobId}/exportar`} className="text-[12px] text-primary hover:text-primary-hover">
+            Exportar
+          </Link>
         </div>
       </header>
 
