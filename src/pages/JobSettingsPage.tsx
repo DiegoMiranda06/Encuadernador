@@ -50,6 +50,9 @@ export function JobSettingsPage() {
               Editar capítulo
             </Button>
           )}
+          <Link to={`/job/${jobId}/portada`} className="text-[12px] text-primary hover:text-primary-hover">
+            Portada
+          </Link>
         </div>
       </header>
 

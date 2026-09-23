@@ -1,4 +1,6 @@
 /** Tipos del protocolo RPC entre el hilo principal y el Web Worker del pipeline. */
+import type { CoverCandidate } from '@/cover/extract'
+import type { CropRect } from '@/cover/render'
 import type { LanguageDecision } from '@/language/types'
 import type { PipelineConfig } from '@/model/config'
 import type { PipelineRunResult } from './applyPipeline'
@@ -45,6 +47,21 @@ export interface SaveOverrideInput {
 
 export type SaveOverrideOutput = { ok: true }
 
+export interface ExtractCoverCandidatesInput {
+  jobId: string
+}
+
+export type ExtractCoverCandidatesOutput = CoverCandidate[]
+
+export interface RenderCoverInput {
+  jobId: string
+  candidateId: string
+  sourceBlob: Blob
+  crop: CropRect
+}
+
+export type RenderCoverOutput = Blob
+
 /** Un método por entrada del pipeline. Se amplía en pasos futuros. */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
@@ -52,6 +69,8 @@ export interface WorkerRequestMap {
   renderChapter: { input: RenderChapterInput; output: RenderChapterOutput }
   confirmLanguage: { input: ConfirmLanguageInput; output: ConfirmLanguageOutput }
   saveOverride: { input: SaveOverrideInput; output: SaveOverrideOutput }
+  extractCoverCandidates: { input: ExtractCoverCandidatesInput; output: ExtractCoverCandidatesOutput }
+  renderCover: { input: RenderCoverInput; output: RenderCoverOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap
