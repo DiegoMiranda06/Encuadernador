@@ -25,6 +25,8 @@ export interface IRBlock {
   sha256?: string
   width?: number
   height?: number
+  /** Marcado por t07-headings. 1 = el tamaño de encabezado más grande del documento, 2 el siguiente, etc. */
+  headingLevel?: number
 }
 
 export interface IRPage {
