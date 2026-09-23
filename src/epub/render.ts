@@ -39,7 +39,8 @@ function renderTextBlock(block: IRBlock, paragraphState: { firstRendered: boolea
   if (block.headingLevel) {
     const tag = headingTag(block.headingLevel)
     const text = lines.map(renderSpans).join(' ')
-    return `<${tag}${lang}>${text}</${tag}>`
+    // El id ancla el nav.xhtml/toc.ncx del build (Paso 11) a este subencabezado exacto.
+    return `<${tag} id="${escapeHtml(block.id)}"${lang}>${text}</${tag}>`
   }
 
   return lines
