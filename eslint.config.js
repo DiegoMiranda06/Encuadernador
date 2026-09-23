@@ -23,6 +23,9 @@ export default tseslint.config(
     rules: {
       ...reactHooksPlugin.configs['recommended-latest'].rules,
       ...reactRefreshPlugin.configs.vite.rules,
+      // Convención del proyecto: un parámetro sin usar con prefijo _ es intencional (interfaz
+      // de Transform compartida, callbacks de mupdf que no necesitan todos sus argumentos).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 )
