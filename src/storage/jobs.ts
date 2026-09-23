@@ -63,6 +63,12 @@ export async function getAssetBlob(assetId: string): Promise<Blob | undefined> {
   return db.get('assets', assetId)
 }
 
+/** Guarda un override de capítulo — el HTML ya debe venir saneado con dompurify (Paso 9). */
+export async function saveOverride(jobId: string, chapterKey: string, html: string): Promise<void> {
+  const db = await openEncuadernadorDB()
+  await db.put('overrides', { jobId, chapterKey, html }, `${jobId}:${chapterKey}`)
+}
+
 /** Overrides guardados del editor manual (Paso 9) para este trabajo, indexados por chapterKey. */
 export async function getOverridesForJob(jobId: string): Promise<Map<string, string>> {
   const db = await openEncuadernadorDB()

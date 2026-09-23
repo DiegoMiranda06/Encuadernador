@@ -10,6 +10,7 @@ import {
   getOverridesForJob,
   saveExtractedJob,
   saveLanguageDecisions,
+  saveOverride,
 } from '@/storage/jobs'
 import { computeConfigHash, runPipeline } from './applyPipeline'
 import type { ApplyPipelineOutput, WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
@@ -27,6 +28,15 @@ const pipelineCache = new Map<string, ApplyPipelineOutput>()
 // `blob:` URLs de imagen, por assetId — estables mientras dure la pestaña, para no crear una
 // nueva por cada renderChapter (preview y build final resuelven igual, solo cambia esta URL).
 const assetUrlCache = new Map<string, string>()
+
+// Ni las decisiones de idioma ni los overrides cambian `config` — el configHash no se mueve
+// solo, pero el resultado cacheado para ese jobId ya no vale (regla no negociable #8: nada se
+// aplica en silencio, así que el próximo applyPipeline debe recalcular con lo recién guardado).
+function invalidatePipelineCache(jobId: string): void {
+  for (const key of pipelineCache.keys()) {
+    if (key.startsWith(`${jobId}:`)) pipelineCache.delete(key)
+  }
+}
 
 async function resolveAssetHrefs(assetIds: Iterable<string>): Promise<Map<string, string>> {
   const hrefByAssetId = new Map<string, string>()
@@ -84,12 +94,13 @@ const handlers: Handlers = {
 
   async confirmLanguage({ jobId, decisions }) {
     await saveLanguageDecisions(jobId, decisions)
-    // Las decisiones no cambian `config`, así que el configHash no cambia — pero el resultado
-    // cacheado para este jobId ya no vale (regla no negociable #8: nada se aplica en silencio,
-    // así que el próximo applyPipeline debe recalcular con las decisiones recién guardadas).
-    for (const key of pipelineCache.keys()) {
-      if (key.startsWith(`${jobId}:`)) pipelineCache.delete(key)
-    }
+    invalidatePipelineCache(jobId)
+    return { ok: true }
+  },
+
+  async saveOverride({ jobId, chapterKey, html }) {
+    await saveOverride(jobId, chapterKey, html)
+    invalidatePipelineCache(jobId)
     return { ok: true }
   },
 
