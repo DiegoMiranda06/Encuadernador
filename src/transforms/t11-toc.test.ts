@@ -32,9 +32,9 @@ describe('t11-toc', () => {
     const { toc, chapters: outputChapters, report } = t11Toc(chapters, {})
 
     expect(toc).toEqual([
-      { level: 1, title: 'Capítulo 1', chapterKey: 'k1' },
-      { level: 2, title: 'Sección 1.1', chapterKey: 'k1' },
-      { level: 1, title: 'Capítulo 2', chapterKey: 'k2' },
+      { level: 1, title: 'Capítulo 1', chapterKey: 'k1', blockId: 'b00' },
+      { level: 2, title: 'Sección 1.1', chapterKey: 'k1', blockId: 'b02' },
+      { level: 1, title: 'Capítulo 2', chapterKey: 'k2', blockId: 'b03' },
     ])
     expect(outputChapters).toBe(chapters) // no modifica los capítulos
     expect(report.changed).toBe(3)
@@ -44,5 +44,11 @@ describe('t11-toc', () => {
     const { toc, report } = t11Toc([], {})
     expect(toc).toEqual([])
     expect(report.changed).toBe(0)
+  })
+
+  it('el capítulo de respaldo (sin encabezado real) no tiene blockId para anclar', () => {
+    const chapters: Chapter[] = [{ key: 'k1', title: 'Documento', blocks: [makeBlock('Texto suelto sin título.')] }]
+    const { toc } = t11Toc(chapters, {})
+    expect(toc).toEqual([{ level: 1, title: 'Documento', chapterKey: 'k1', blockId: undefined }])
   })
 })

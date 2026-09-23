@@ -79,8 +79,8 @@ describe('runPipeline', () => {
 
     // t11-toc: una entrada de nivel 1 (el capítulo) y una de nivel 2 (la sección).
     expect(result.toc).toEqual([
-      { level: 1, title: 'Capítulo Uno', chapterKey: chapter.key },
-      { level: 2, title: 'Sección Uno', chapterKey: chapter.key },
+      { level: 1, title: 'Capítulo Uno', chapterKey: chapter.key, blockId: 'p000b00' },
+      { level: 2, title: 'Sección Uno', chapterKey: chapter.key, blockId: 'p000b02' },
     ])
 
     // t12-language: el párrafo en alemán se detecta contra el idioma principal (español).

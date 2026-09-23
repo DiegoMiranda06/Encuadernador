@@ -13,6 +13,7 @@ export interface Chapter {
 export interface DocModel {
   metadata: { title?: string; author?: string; language: string }
   chapters: Chapter[]
-  toc: { level: number; title: string; chapterKey: string }[]
+  /** `blockId` falta cuando el capítulo no tiene un bloque de encabezado real que ancle (el capítulo de respaldo, sin título propio) — el link va solo al archivo, sin ancla. */
+  toc: { level: number; title: string; chapterKey: string; blockId?: string }[]
   reports: Record<string, TransformReport>
 }

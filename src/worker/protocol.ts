@@ -62,6 +62,14 @@ export interface RenderCoverInput {
 
 export type RenderCoverOutput = Blob
 
+export interface BuildEpubInput {
+  jobId: string
+  /** Mismo contrato que renderChapter: hace falta un applyPipeline previo con este configHash cacheado. */
+  configHash: string
+}
+
+export type BuildEpubOutput = Blob
+
 /** Un método por entrada del pipeline. Se amplía en pasos futuros. */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
@@ -71,6 +79,7 @@ export interface WorkerRequestMap {
   saveOverride: { input: SaveOverrideInput; output: SaveOverrideOutput }
   extractCoverCandidates: { input: ExtractCoverCandidatesInput; output: ExtractCoverCandidatesOutput }
   renderCover: { input: RenderCoverInput; output: RenderCoverOutput }
+  build: { input: BuildEpubInput; output: BuildEpubOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap

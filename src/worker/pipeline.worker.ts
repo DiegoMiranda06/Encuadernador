@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { buildEpub } from '@/epub/builder'
 import { extractCoverCandidates } from '@/cover/extract'
 import { renderCover } from '@/cover/render'
 import { renderChapterXhtml } from '@/epub/render'
@@ -7,6 +8,7 @@ import type { JobRecord } from '@/storage/db'
 import {
   getAssetBlob,
   getAssetsForDocument,
+  getCover,
   getIRDocument,
   getLanguageDecisionsForJob,
   getOverridesForJob,
@@ -142,6 +144,27 @@ const handlers: Handlers = {
     const cover = await renderCover(sourceBlob, crop)
     await Promise.all([saveCover(jobId, cover), saveJobCoverCrop(jobId, { candidateId, ...crop })])
     return cover
+  },
+
+  async build({ jobId, configHash }) {
+    const cached = pipelineCache.get(`${jobId}:${configHash}`)
+    if (!cached) throw new Error('No hay un resultado de pipeline cacheado para este configHash — llamá a applyPipeline primero.')
+
+    const document = await getIRDocument(jobId)
+    if (!document) throw new Error(`No se encontró el documento IR para el trabajo ${jobId}`)
+
+    const [assets, coverBlob] = await Promise.all([getAssetsForDocument(document), getCover(jobId)])
+    const cover = coverBlob ? new Uint8Array(await coverBlob.arrayBuffer()) : undefined
+
+    const epubBytes = buildEpub({
+      metadata: cached.metadata,
+      chapters: cached.chapters,
+      toc: cached.toc,
+      assets,
+      cover,
+    })
+
+    return new Blob([new Uint8Array(epubBytes)], { type: 'application/epub+zip' })
   },
 }
 

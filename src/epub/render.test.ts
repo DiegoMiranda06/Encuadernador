@@ -26,7 +26,7 @@ describe('renderChapterXhtml', () => {
 
     const xhtml = renderChapterXhtml(chapter, options)
 
-    expect(xhtml).toContain('<h1>Capítulo Uno</h1>')
+    expect(xhtml).toContain('<h1 id="b0">Capítulo Uno</h1>')
     expect(xhtml).toContain('<p class="first">Primer párrafo.</p>')
   })
 
@@ -36,7 +36,7 @@ describe('renderChapterXhtml', () => {
       title: 'Capítulo Uno',
       blocks: [textBlock('b0', 'Sección', { headingLevel: 2 })],
     }
-    expect(renderChapterXhtml(chapter, options)).toContain('<h2>Sección</h2>')
+    expect(renderChapterXhtml(chapter, options)).toContain('<h2 id="b0">Sección</h2>')
   })
 
   it('envuelve las notas al pie en aside epub:type="footnote"', () => {
