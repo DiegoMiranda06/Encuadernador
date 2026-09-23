@@ -62,7 +62,29 @@ export function computeBodyFontSize(blocks: IRBlock[]): number {
   return bodyFontSize || 12
 }
 
+function lineDominantSize(line: { spans: { size: number; text: string }[] }): number {
+  const counts = new Map<number, number>()
+  for (const span of line.spans) {
+    const rounded = Math.round(span.size)
+    counts.set(rounded, (counts.get(rounded) ?? 0) + span.text.length)
+  }
+  let best = 0
+  let bestCount = -1
+  for (const [size, count] of counts) {
+    if (count > bestCount) {
+      best = size
+      bestCount = count
+    }
+  }
+  return best
+}
+
 export function computeStats(pages: IRPage[]): DocumentStats {
+  // Se calcula antes que el resto para poder descartar de entrada los candidatos a banda
+  // recurrente con tamaño de encabezado — un título de capítulo que caiga justo en la franja del
+  // 12% no debería confundirse con una cabecera repetida solo porque el número de capítulo varía
+  // y normalizeBandText colapsa dígitos (hallazgo de la calibración del Paso 7).
+  const bodyFontSizeForBands = computeBodyFontSize(pages.flatMap((page) => page.blocks))
   const sizeCounts = new Map<number, number>()
   const lineHeights: number[] = []
   const lineGaps: number[] = []
@@ -104,8 +126,11 @@ export function computeStats(pages: IRPage[]): DocumentStats {
           sizeCounts.set(rounded, (sizeCounts.get(rounded) ?? 0) + span.text.length)
         }
 
+        // Mismo factor 1.15 que HEADING_SIZE_FACTOR en t07-headings — un tamaño de encabezado
+        // nunca es candidato a banda recurrente, sin importar en qué franja de la página caiga.
         const position = bandPosition(y0, y1, page.height)
-        if (position && lineText.trim()) {
+        const isHeadingSized = lineDominantSize(line) > bodyFontSizeForBands * 1.15
+        if (position && lineText.trim() && !isHeadingSized) {
           const key = `${position}:${normalizeBandText(lineText)}`
           const existing = bandCandidates.get(key)
           if (existing) {
