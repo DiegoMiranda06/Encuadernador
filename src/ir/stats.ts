@@ -1,4 +1,4 @@
-import type { DocumentStats, IRPage, RecurringBand } from './schema'
+import type { DocumentStats, IRBlock, IRPage, RecurringBand } from './schema'
 
 function median(values: number[]): number {
   if (values.length === 0) return 0
@@ -32,6 +32,34 @@ export function bandPosition(y0: number, y1: number, pageHeight: number): 'top' 
   if (y1 <= pageHeight * 0.12) return 'top'
   if (y0 >= pageHeight * 0.88) return 'bottom'
   return null
+}
+
+/**
+ * El tamaño de fuente que ocupa más caracteres en total — se reusa en t07-headings y
+ * t10-footnotes, que corren después de t08-chapters y ya no tienen IRPage[] a mano, solo
+ * Chapter[] (bloques ya agrupados, sin la noción de página).
+ */
+export function computeBodyFontSize(blocks: IRBlock[]): number {
+  const sizeCounts = new Map<number, number>()
+  for (const block of blocks) {
+    if (block.type !== 'text' || !block.lines) continue
+    for (const line of block.lines) {
+      for (const span of line.spans) {
+        const rounded = Math.round(span.size)
+        sizeCounts.set(rounded, (sizeCounts.get(rounded) ?? 0) + span.text.length)
+      }
+    }
+  }
+
+  let bodyFontSize = 0
+  let bodyFontCount = 0
+  for (const [size, count] of sizeCounts) {
+    if (count > bodyFontCount) {
+      bodyFontSize = size
+      bodyFontCount = count
+    }
+  }
+  return bodyFontSize || 12
 }
 
 export function computeStats(pages: IRPage[]): DocumentStats {
