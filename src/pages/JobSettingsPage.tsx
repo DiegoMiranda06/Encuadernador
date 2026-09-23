@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ChapterList } from '@/components/preview/ChapterList'
 import { ChapterPreview } from '@/components/preview/ChapterPreview'
 import { TransformPanel } from '@/components/settings/TransformPanel'
@@ -22,7 +22,14 @@ export function JobSettingsPage() {
     <div className="flex h-screen flex-col bg-bg text-text">
       <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <h1 className="text-[15px] font-semibold">{job?.filename ?? 'Encuadernador'}</h1>
-        {isApplying && <span className="text-[12px] text-text-muted">Aplicando…</span>}
+        <div className="flex items-center gap-3">
+          {isApplying && <span className="text-[12px] text-text-muted">Aplicando…</span>}
+          {(result?.languageCandidates.length ?? 0) > 0 && (
+            <Link to={`/job/${jobId}/idioma`} className="text-[12px] text-primary hover:text-primary-hover">
+              Revisar idioma ({result?.languageCandidates.length})
+            </Link>
+          )}
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <TransformPanel config={config} reports={result?.reports} onSetEnabled={setEnabled} onSetParams={setParams} />

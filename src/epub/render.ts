@@ -27,13 +27,19 @@ function headingTag(level: number): 'h1' | 'h2' | 'h3' {
   return 'h3'
 }
 
+/** ` xml:lang="..."` si el usuario confirmó un idioma distinto para este bloque (Paso 8) — nunca antes. */
+function langAttr(block: IRBlock): string {
+  return block.lang ? ` xml:lang="${escapeHtml(block.lang)}"` : ''
+}
+
 function renderTextBlock(block: IRBlock, paragraphState: { firstRendered: boolean }): string {
   const lines = block.lines ?? []
+  const lang = langAttr(block)
 
   if (block.headingLevel) {
     const tag = headingTag(block.headingLevel)
     const text = lines.map(renderSpans).join(' ')
-    return `<${tag}>${text}</${tag}>`
+    return `<${tag}${lang}>${text}</${tag}>`
   }
 
   return lines
@@ -41,11 +47,11 @@ function renderTextBlock(block: IRBlock, paragraphState: { firstRendered: boolea
       const text = renderSpans(line)
       // epub3 no exige un noteref emparejado: el marcador de la nota ya viene como texto normal
       // en el cuerpo (parte del PDF original) — esta es una simplificación consciente, documentada.
-      if (block.isFootnote) return `<aside epub:type="footnote" id="fn-${block.id}"><p>${text}</p></aside>`
+      if (block.isFootnote) return `<aside epub:type="footnote" id="fn-${block.id}"${lang}><p>${text}</p></aside>`
 
       const isFirst = !paragraphState.firstRendered
       paragraphState.firstRendered = true
-      return isFirst ? `<p class="first">${text}</p>` : `<p>${text}</p>`
+      return isFirst ? `<p class="first"${lang}>${text}</p>` : `<p${lang}>${text}</p>`
     })
     .join('\n')
 }

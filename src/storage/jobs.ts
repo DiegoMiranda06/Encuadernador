@@ -1,4 +1,5 @@
 import type { IRDocument } from '@/ir/schema'
+import type { LanguageDecision } from '@/language/types'
 import { openEncuadernadorDB, type JobRecord } from './db'
 
 function collectAssetIds(document: IRDocument): string[] {
@@ -76,19 +77,60 @@ export async function getOverridesForJob(jobId: string): Promise<Map<string, str
   return overrides
 }
 
+/** Guarda decisiones de la Revisión de idioma (Paso 8) — nunca se aplica un candidato sin esto. */
+export async function saveLanguageDecisions(
+  jobId: string,
+  decisions: { blockId: string; decision: 'confirmed' | 'dismissed'; language: string }[],
+): Promise<void> {
+  const db = await openEncuadernadorDB()
+  const tx = db.transaction('languageDecisions', 'readwrite')
+  await Promise.all([
+    ...decisions.map((entry) =>
+      tx.store.put(
+        { jobId, blockId: entry.blockId, decision: entry.decision, language: entry.language },
+        `${jobId}:${entry.blockId}`,
+      ),
+    ),
+    tx.done,
+  ])
+}
+
+/** Decisiones ya tomadas para este trabajo, indexadas por blockId. */
+export async function getLanguageDecisionsForJob(jobId: string): Promise<Map<string, LanguageDecision>> {
+  const db = await openEncuadernadorDB()
+  const decisions = new Map<string, LanguageDecision>()
+  let cursor = await db.transaction('languageDecisions').store.openCursor()
+  while (cursor) {
+    if (typeof cursor.key === 'string' && cursor.key.startsWith(`${jobId}:`)) {
+      decisions.set(cursor.value.blockId, { decision: cursor.value.decision, language: cursor.value.language })
+    }
+    cursor = await cursor.continue()
+  }
+  return decisions
+}
+
 export async function deleteJob(jobId: string): Promise<void> {
   const db = await openEncuadernadorDB()
   const document = await db.get('irDocuments', jobId)
   const assetIds = document ? collectAssetIds(document) : []
 
-  const tx = db.transaction(['jobs', 'irDocuments', 'assets', 'overrides', 'covers'], 'readwrite')
+  const tx = db.transaction(['jobs', 'irDocuments', 'assets', 'overrides', 'covers', 'languageDecisions'], 'readwrite')
+
+  // Overrides y decisiones de idioma se indexan por `${jobId}:...` — se recorren por prefijo.
   const overridesStore = tx.objectStore('overrides')
-  // Los overrides se indexan por `${jobId}:${chapterKey}` — se recorren por prefijo.
-  let cursor = await overridesStore.openCursor()
-  while (cursor) {
-    if (typeof cursor.key === 'string' && cursor.key.startsWith(`${jobId}:`)) await cursor.delete()
-    cursor = await cursor.continue()
+  let overrideCursor = await overridesStore.openCursor()
+  while (overrideCursor) {
+    if (typeof overrideCursor.key === 'string' && overrideCursor.key.startsWith(`${jobId}:`)) await overrideCursor.delete()
+    overrideCursor = await overrideCursor.continue()
   }
+
+  const languageDecisionsStore = tx.objectStore('languageDecisions')
+  let decisionCursor = await languageDecisionsStore.openCursor()
+  while (decisionCursor) {
+    if (typeof decisionCursor.key === 'string' && decisionCursor.key.startsWith(`${jobId}:`)) await decisionCursor.delete()
+    decisionCursor = await decisionCursor.continue()
+  }
+
   await Promise.all([
     tx.objectStore('jobs').delete(jobId),
     tx.objectStore('irDocuments').delete(jobId),

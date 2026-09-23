@@ -29,6 +29,8 @@ export interface IRBlock {
   headingLevel?: number
   /** Marcado por t10-footnotes: texto consistentemente más chico que el cuerpo del documento. */
   isFootnote?: boolean
+  /** ISO 639-3 confirmado por el usuario en la Revisión de idioma (Paso 8) — se traduce a xml:lang en el XHTML. */
+  lang?: string
 }
 
 export interface IRPage {

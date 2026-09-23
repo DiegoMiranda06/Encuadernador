@@ -1,4 +1,5 @@
 /** Tipos del protocolo RPC entre el hilo principal y el Web Worker del pipeline. */
+import type { LanguageDecision } from '@/language/types'
 import type { PipelineConfig } from '@/model/config'
 import type { PipelineRunResult } from './applyPipeline'
 
@@ -28,11 +29,19 @@ export interface RenderChapterInput {
 
 export type RenderChapterOutput = string
 
+export interface ConfirmLanguageInput {
+  jobId: string
+  decisions: { blockId: string; decision: LanguageDecision['decision']; language: string }[]
+}
+
+export type ConfirmLanguageOutput = { ok: true }
+
 /** Un método por entrada del pipeline. Se amplía en pasos futuros. */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
   applyPipeline: { input: ApplyPipelineInput; output: ApplyPipelineOutput }
   renderChapter: { input: RenderChapterInput; output: RenderChapterOutput }
+  confirmLanguage: { input: ConfirmLanguageInput; output: ConfirmLanguageOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap
