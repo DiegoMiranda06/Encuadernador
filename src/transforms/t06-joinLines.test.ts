@@ -78,4 +78,41 @@ describe('t06-joinLines', () => {
     ])
     expect(report.changed).toBe(2)
   })
+
+  it('params.gapFactor es el único ajuste en vivo del Paso 7: subirlo tolera huecos más grandes', () => {
+    // Fixture de bboxes a mano (no PDF real): un bloque con dos gaps de 10 y uno de 18 —
+    // medianLineGap = 10. Con gapFactor por defecto (1.6, umbral 16) el gap de 18 sí separa
+    // párrafo; con gapFactor 2 (umbral 20) el mismo gap ya no alcanza y todo se une.
+    const span = (text: string) => ({
+      text,
+      font: 'Helvetica',
+      size: 12,
+      bold: false,
+      italic: false,
+      bbox: [40, 0, 300, 12] as [number, number, number, number],
+    })
+    const line = (y0: number, text: string) => ({ bbox: [40, y0, 300, y0 + 12] as [number, number, number, number], spans: [span(text)] })
+    const page = {
+      index: 0,
+      width: 500,
+      height: 600,
+      rotation: 0,
+      blocks: [
+        {
+          id: 'p000b00',
+          type: 'text' as const,
+          bbox: [40, 0, 300, 86] as [number, number, number, number],
+          lines: [line(0, 'Línea uno'), line(22, 'Línea dos'), line(44, 'Línea tres'), line(74, 'Línea cuatro')],
+        },
+      ],
+    }
+
+    const withDefault = t06JoinLines([page], {})
+    expect(withDefault.pages[0].blocks[0].lines).toHaveLength(2)
+    expect(withDefault.report.changed).toBe(2)
+
+    const withHigherFactor = t06JoinLines([page], { gapFactor: 2 })
+    expect(withHigherFactor.pages[0].blocks[0].lines).toHaveLength(1)
+    expect(withHigherFactor.report.changed).toBe(3)
+  })
 })

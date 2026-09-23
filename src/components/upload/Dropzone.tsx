@@ -1,24 +1,32 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ExtractionProgress } from '@/components/upload/ExtractionProgress'
 import { rpc } from '@/lib/rpc'
 
 export function Dropzone() {
-  const [status, setStatus] = useState('Arrastra un PDF aquí, o haz clic para elegir uno')
+  const navigate = useNavigate()
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [status, setStatus] = useState('Arrastra un PDF aquí, o hacé clic para elegir uno')
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(
-    () =>
-      rpc.onExtractionProgress((current, total) => {
-        setStatus(`Extrayendo… página ${current} de ${total}`)
-      }),
-    [],
+  useEffect(() => rpc.onExtractionProgress((current, total) => setProgress({ current, total })), [])
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      setError(null)
+      setStatus(`Extrayendo "${file.name}"…`)
+      try {
+        const buffer = await file.arrayBuffer()
+        const result = await rpc.extract(buffer, file.name)
+        navigate(`/job/${result.jobId}`)
+      } catch (cause) {
+        setProgress(null)
+        setStatus('Arrastra un PDF aquí, o hacé clic para elegir uno')
+        setError(cause instanceof Error ? cause.message : String(cause))
+      }
+    },
+    [navigate],
   )
-
-  const handleFile = useCallback(async (file: File) => {
-    setStatus(`Extrayendo "${file.name}"…`)
-    const buffer = await file.arrayBuffer()
-    const result = await rpc.extract(buffer, file.name)
-    console.log(result)
-    setStatus(`"${file.name}": ${result.pageCount} páginas, ${result.imageCount} imágenes — jobId ${result.jobId}`)
-  }, [])
 
   const onDrop = useCallback(
     (event: DragEvent<HTMLLabelElement>) => {
@@ -41,17 +49,11 @@ export function Dropzone() {
     <label
       onDrop={onDrop}
       onDragOver={(event) => event.preventDefault()}
-      style={{
-        display: 'block',
-        border: '2px dashed var(--border-strong, #3A404A)',
-        borderRadius: 8,
-        padding: 48,
-        textAlign: 'center',
-        cursor: 'pointer',
-      }}
+      className="block cursor-pointer rounded-lg border-2 border-dashed border-border-strong p-12 text-center transition-surface hover:border-primary"
     >
-      <p>{status}</p>
-      <input type="file" accept="application/pdf" onChange={onChange} style={{ display: 'none' }} />
+      {progress ? <ExtractionProgress current={progress.current} total={progress.total} /> : <p>{status}</p>}
+      {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+      <input type="file" accept="application/pdf" onChange={onChange} className="hidden" />
     </label>
   )
 }

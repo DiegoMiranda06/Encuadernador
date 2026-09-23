@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeStats } from '@/ir/stats'
 import type { IRBlock, IRDocument, IRPage } from '@/ir/schema'
-import type { PipelineConfig, TransformConfig } from '@/model/config'
+import { createDefaultPipelineConfig, type PipelineConfig } from '@/model/config'
 import { TRANSFORM_ORDER } from '@/transforms/registry'
 import { computeConfigHash, runPipeline } from './applyPipeline'
 
@@ -53,12 +53,7 @@ function buildDocument(): IRDocument {
   }
 }
 
-function makeConfig(): PipelineConfig {
-  const entries = TRANSFORM_ORDER.map((id) => [id, { enabled: true, params: {} } satisfies TransformConfig] as const)
-  const config = Object.fromEntries(entries) as PipelineConfig
-  config['t12-language'].params = { mainLanguage: 'spa' }
-  return config
-}
+const makeConfig = createDefaultPipelineConfig
 
 describe('runPipeline', () => {
   it('cablea las doce transforms en orden y arma chapters + toc + languageCandidates', async () => {
