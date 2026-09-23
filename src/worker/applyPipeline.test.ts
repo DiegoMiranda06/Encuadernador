@@ -111,6 +111,34 @@ describe('runPipeline', () => {
     expect(result.orphanedOverrides).toEqual(['clave-huerfana'])
   })
 
+  it('confirmar un candidato le pone xml:lang al bloque y lo saca de languageCandidates; descartar solo lo saca', async () => {
+    const document = buildDocument()
+    const assets = new Map([['img1', new Uint8Array([1, 2, 3, 4])]])
+    const config = makeConfig()
+
+    const confirmed = await runPipeline(
+      document,
+      assets,
+      config,
+      new Map(),
+      new Map([['p000b06', { decision: 'confirmed', language: 'deu' }]]),
+    )
+    expect(confirmed.languageCandidates).toEqual([])
+    const germanBlock = confirmed.chapters[0].blocks.find((block) => block.id === 'p000b06')
+    expect(germanBlock?.lang).toBe('deu')
+
+    const dismissed = await runPipeline(
+      document,
+      assets,
+      config,
+      new Map(),
+      new Map([['p000b06', { decision: 'dismissed', language: 'deu' }]]),
+    )
+    expect(dismissed.languageCandidates).toEqual([])
+    const dismissedBlock = dismissed.chapters[0].blocks.find((block) => block.id === 'p000b06')
+    expect(dismissedBlock?.lang).toBeUndefined()
+  })
+
   it('una transform desactivada no cambia nada y su reporte queda en cero', async () => {
     const document = buildDocument()
     const assets = new Map([['img1', new Uint8Array([1, 2, 3, 4])]])

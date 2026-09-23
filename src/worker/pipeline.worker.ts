@@ -2,7 +2,15 @@
 import { renderChapterXhtml } from '@/epub/render'
 import { extractDocument } from '@/ir/extract'
 import type { JobRecord } from '@/storage/db'
-import { getAssetBlob, getAssetsForDocument, getIRDocument, getOverridesForJob, saveExtractedJob } from '@/storage/jobs'
+import {
+  getAssetBlob,
+  getAssetsForDocument,
+  getIRDocument,
+  getLanguageDecisionsForJob,
+  getOverridesForJob,
+  saveExtractedJob,
+  saveLanguageDecisions,
+} from '@/storage/jobs'
 import { computeConfigHash, runPipeline } from './applyPipeline'
 import type { ApplyPipelineOutput, WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
 
@@ -63,11 +71,26 @@ const handlers: Handlers = {
     const cached = pipelineCache.get(cacheKey)
     if (cached) return cached
 
-    const [assets, overrides] = await Promise.all([getAssetsForDocument(document), getOverridesForJob(jobId)])
-    const result = await runPipeline(document, assets, config, overrides)
+    const [assets, overrides, languageDecisions] = await Promise.all([
+      getAssetsForDocument(document),
+      getOverridesForJob(jobId),
+      getLanguageDecisionsForJob(jobId),
+    ])
+    const result = await runPipeline(document, assets, config, overrides, languageDecisions)
     const output: ApplyPipelineOutput = { ...result, configHash }
     pipelineCache.set(cacheKey, output)
     return output
+  },
+
+  async confirmLanguage({ jobId, decisions }) {
+    await saveLanguageDecisions(jobId, decisions)
+    // Las decisiones no cambian `config`, así que el configHash no cambia — pero el resultado
+    // cacheado para este jobId ya no vale (regla no negociable #8: nada se aplica en silencio,
+    // así que el próximo applyPipeline debe recalcular con las decisiones recién guardadas).
+    for (const key of pipelineCache.keys()) {
+      if (key.startsWith(`${jobId}:`)) pipelineCache.delete(key)
+    }
+    return { ok: true }
   },
 
   async renderChapter({ jobId, chapterIndex, configHash }) {

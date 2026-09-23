@@ -1,3 +1,4 @@
+import type { LanguageDecision } from '@/language/types'
 import type { PipelineConfig } from '@/model/config'
 import { RpcClient } from '@/worker/rpcClient'
 import PipelineWorker from '@/worker/pipeline.worker?worker'
@@ -15,6 +16,8 @@ export const rpc = {
   applyPipeline: (jobId: string, config: PipelineConfig) => getClient().call('applyPipeline', { jobId, config }),
   renderChapter: (jobId: string, chapterIndex: number, configHash: string) =>
     getClient().call('renderChapter', { jobId, chapterIndex, configHash }),
+  confirmLanguage: (jobId: string, decisions: { blockId: string; decision: LanguageDecision['decision']; language: string }[]) =>
+    getClient().call('confirmLanguage', { jobId, decisions }),
   onExtractionProgress: (handler: (current: number, total: number) => void) =>
     getClient().onProgress((message) => {
       if (message.phase === 'extracting') handler(message.current, message.total)

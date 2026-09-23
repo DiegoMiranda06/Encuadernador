@@ -9,3 +9,9 @@ export interface LanguageCandidate {
   /** Fragmento de texto que disparó la candidata, para que la UI de revisión se lo muestre al usuario. */
   sample: string
 }
+
+/** Lo que decide el usuario en la Revisión de idioma (Paso 8) sobre una candidata — nunca automático. */
+export interface LanguageDecision {
+  decision: 'confirmed' | 'dismissed'
+  language: string
+}

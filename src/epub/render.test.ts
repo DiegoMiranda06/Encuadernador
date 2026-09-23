@@ -88,6 +88,21 @@ describe('renderChapterXhtml', () => {
     expect(xhtml).toContain('normal <strong>negrita</strong><em> &amp; &lt;raro&gt;</em>')
   })
 
+  it('marca xml:lang en el párrafo cuando el usuario confirmó un idioma distinto (Paso 8)', () => {
+    const chapter: Chapter = {
+      key: 'k1',
+      title: 'Capítulo Uno',
+      blocks: [textBlock('b0', 'Gallia est omnis divisa.', { lang: 'lat' })],
+    }
+    const xhtml = renderChapterXhtml(chapter, options)
+    expect(xhtml).toContain('<p class="first" xml:lang="lat">Gallia est omnis divisa.</p>')
+  })
+
+  it('no agrega xml:lang al párrafo si nadie confirmó nada para ese bloque', () => {
+    const chapter: Chapter = { key: 'k1', title: 'Capítulo Uno', blocks: [textBlock('b0', 'Texto normal.')] }
+    expect(renderChapterXhtml(chapter, options)).toContain('<p class="first">Texto normal.</p>')
+  })
+
   it('usa el override manual tal cual, sin recalcular desde los blocks', () => {
     const chapter: Chapter = {
       key: 'k1',

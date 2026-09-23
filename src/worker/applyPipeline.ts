@@ -1,5 +1,5 @@
 import { sha256Hex } from '@/lib/hash'
-import type { LanguageCandidate } from '@/language/types'
+import type { LanguageCandidate, LanguageDecision } from '@/language/types'
 import type { PipelineConfig } from '@/model/config'
 import type { Chapter, DocModel } from '@/model/document'
 import type { IRDocument, IRPage } from '@/ir/schema'
@@ -64,6 +64,31 @@ function runPageTransform(
 }
 
 /**
+ * Aplica las decisiones ya tomadas en la Revisión de idioma (Paso 8): un bloque "confirmed"
+ * recibe su `lang` (persiste aunque, tras un cambio de config, ya no vuelva a salir como
+ * candidata); un bloque con cualquier decisión — confirmada o descartada — sale de la lista de
+ * candidatas, para no volver a pedirle al usuario algo que ya revisó.
+ */
+function applyLanguageDecisions(
+  chapters: Chapter[],
+  candidates: LanguageCandidate[],
+  languageDecisions: Map<string, LanguageDecision>,
+): { chapters: Chapter[]; candidates: LanguageCandidate[] } {
+  if (languageDecisions.size === 0) return { chapters, candidates }
+
+  const outputChapters = chapters.map((chapter) => ({
+    ...chapter,
+    blocks: chapter.blocks.map((block) => {
+      const decision = languageDecisions.get(block.id)
+      return decision?.decision === 'confirmed' ? { ...block, lang: decision.language } : block
+    }),
+  }))
+  const remainingCandidates = candidates.filter((candidate) => !languageDecisions.has(candidate.blockId))
+
+  return { chapters: outputChapters, candidates: remainingCandidates }
+}
+
+/**
  * Cablea `registry.ts` (t01 a t12, en ese orden fijo) sobre un IRDocument ya extraído: aplica
  * las transforms activas, junta los overrides guardados y detecta los huérfanos. No toca
  * IndexedDB ni caché — eso es responsabilidad de `pipeline.worker.ts`, que sí conoce el jobId.
@@ -73,6 +98,7 @@ export async function runPipeline(
   assets: Map<string, Uint8Array>,
   config: PipelineConfig,
   overridesByKey: Map<string, string>,
+  languageDecisions: Map<string, LanguageDecision> = new Map(),
 ): Promise<PipelineRunResult> {
   const reports: Partial<Record<TransformId, TransformReport>> = {}
   const warnings: string[] = []
@@ -138,6 +164,8 @@ export async function runPipeline(
   } else {
     reports['t12-language'] = disabledReport('t12-language')
   }
+
+  ;({ chapters, candidates: languageCandidates } = applyLanguageDecisions(chapters, languageCandidates, languageDecisions))
 
   const currentKeys = new Set(chapters.map((chapter) => chapter.key))
   const orphanedOverrides = [...overridesByKey.keys()].filter((key) => !currentKeys.has(key))
