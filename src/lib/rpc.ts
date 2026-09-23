@@ -18,6 +18,8 @@ export const rpc = {
     getClient().call('renderChapter', { jobId, chapterIndex, configHash }),
   confirmLanguage: (jobId: string, decisions: { blockId: string; decision: LanguageDecision['decision']; language: string }[]) =>
     getClient().call('confirmLanguage', { jobId, decisions }),
+  saveOverride: (jobId: string, chapterKey: string, html: string) =>
+    getClient().call('saveOverride', { jobId, chapterKey, html }),
   onExtractionProgress: (handler: (current: number, total: number) => void) =>
     getClient().onProgress((message) => {
       if (message.phase === 'extracting') handler(message.current, message.total)

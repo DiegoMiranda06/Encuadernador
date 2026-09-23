@@ -36,12 +36,22 @@ export interface ConfirmLanguageInput {
 
 export type ConfirmLanguageOutput = { ok: true }
 
+export interface SaveOverrideInput {
+  jobId: string
+  chapterKey: string
+  /** Ya saneado con dompurify en el hilo principal (regla no negociable #5) antes de llegar acá. */
+  html: string
+}
+
+export type SaveOverrideOutput = { ok: true }
+
 /** Un método por entrada del pipeline. Se amplía en pasos futuros. */
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
   applyPipeline: { input: ApplyPipelineInput; output: ApplyPipelineOutput }
   renderChapter: { input: RenderChapterInput; output: RenderChapterOutput }
   confirmLanguage: { input: ConfirmLanguageInput; output: ConfirmLanguageOutput }
+  saveOverride: { input: SaveOverrideInput; output: SaveOverrideOutput }
 }
 
 export type WorkerMethod = keyof WorkerRequestMap

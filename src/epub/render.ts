@@ -62,7 +62,8 @@ function renderImageBlock(block: IRBlock, resolveAssetHref: (assetId: string) =>
   return `<div class="img-block"><img src="${href}" alt=""/></div>`
 }
 
-function renderChapterBody(chapter: Chapter, options: RenderChapterOptions): string {
+/** El cuerpo (sin el shell XHTML) — lo reusa el editor manual (Paso 9) para arrancar con el mismo texto que ya se ve en la preview. */
+export function renderChapterBody(chapter: Chapter, options: RenderChapterOptions): string {
   const paragraphState = { firstRendered: false }
   return chapter.blocks
     .map((block) =>
