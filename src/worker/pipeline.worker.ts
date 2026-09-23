@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
+import { renderChapterXhtml } from '@/epub/render'
 import { extractDocument } from '@/ir/extract'
 import type { JobRecord } from '@/storage/db'
-import { getAssetsForDocument, getIRDocument, getOverridesForJob, saveExtractedJob } from '@/storage/jobs'
+import { getAssetBlob, getAssetsForDocument, getIRDocument, getOverridesForJob, saveExtractedJob } from '@/storage/jobs'
 import { computeConfigHash, runPipeline } from './applyPipeline'
 import type { ApplyPipelineOutput, WorkerMethod, WorkerRequestMap, WorkerRequestMessage } from './protocol'
 
@@ -13,8 +14,26 @@ type Handlers = {
   ) => WorkerRequestMap[M]['output'] | Promise<WorkerRequestMap[M]['output']>
 }
 
-// Se pierde al recargar la página — aceptable, el recálculo es rápido (Paso 5 del blueprint).
+// Ambos se pierden al recargar la página — aceptable, recalcular es rápido (Paso 5 del blueprint).
 const pipelineCache = new Map<string, ApplyPipelineOutput>()
+// `blob:` URLs de imagen, por assetId — estables mientras dure la pestaña, para no crear una
+// nueva por cada renderChapter (preview y build final resuelven igual, solo cambia esta URL).
+const assetUrlCache = new Map<string, string>()
+
+async function resolveAssetHrefs(assetIds: Iterable<string>): Promise<Map<string, string>> {
+  const hrefByAssetId = new Map<string, string>()
+  await Promise.all(
+    [...assetIds].map(async (assetId) => {
+      if (!assetUrlCache.has(assetId)) {
+        const blob = await getAssetBlob(assetId)
+        if (blob) assetUrlCache.set(assetId, URL.createObjectURL(blob))
+      }
+      const href = assetUrlCache.get(assetId)
+      if (href) hrefByAssetId.set(assetId, href)
+    }),
+  )
+  return hrefByAssetId
+}
 
 const handlers: Handlers = {
   async extract({ file, filename }) {
@@ -49,6 +68,25 @@ const handlers: Handlers = {
     const output: ApplyPipelineOutput = { ...result, configHash }
     pipelineCache.set(cacheKey, output)
     return output
+  },
+
+  async renderChapter({ jobId, chapterIndex, configHash }) {
+    const cached = pipelineCache.get(`${jobId}:${configHash}`)
+    if (!cached) throw new Error('No hay un resultado de pipeline cacheado para este configHash — llamá a applyPipeline primero.')
+
+    const chapter = cached.chapters[chapterIndex]
+    if (!chapter) throw new Error(`El trabajo ${jobId} no tiene un capítulo en el índice ${chapterIndex}`)
+
+    const assetIds = new Set<string>()
+    for (const block of chapter.blocks) {
+      if (block.type === 'image' && block.assetId) assetIds.add(block.assetId)
+    }
+    const hrefByAssetId = await resolveAssetHrefs(assetIds)
+
+    return renderChapterXhtml(chapter, {
+      language: cached.metadata.language,
+      resolveAssetHref: (assetId) => hrefByAssetId.get(assetId) ?? '',
+    })
   },
 }
 
