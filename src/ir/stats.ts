@@ -22,9 +22,16 @@ function mode(values: number[]): number {
   return best
 }
 
-/** Normaliza texto de candidatos a cabecera/pie: colapsa dígitos, para que "Página 12" y "Página 47" cuenten como la misma banda. */
-function normalizeBandText(text: string): string {
+/** Normaliza texto de candidatos a cabecera/pie: colapsa dígitos, para que "Página 12" y "Página 47" cuenten como la misma banda. Se reusa en t03-runningHeads para volver a calcular la misma clave. */
+export function normalizeBandText(text: string): string {
   return text.trim().toLowerCase().replace(/\d+/g, '#')
+}
+
+/** Franja del 12% superior/inferior de la página — el mismo umbral que usa computeStats. */
+export function bandPosition(y0: number, y1: number, pageHeight: number): 'top' | 'bottom' | null {
+  if (y1 <= pageHeight * 0.12) return 'top'
+  if (y0 >= pageHeight * 0.88) return 'bottom'
+  return null
 }
 
 export function computeStats(pages: IRPage[]): DocumentStats {
@@ -44,8 +51,6 @@ export function computeStats(pages: IRPage[]): DocumentStats {
   >()
 
   for (const page of pages) {
-    const topLimit = page.height * 0.12
-    const bottomLimit = page.height * 0.88
     let previousLineBottom: number | null = null
 
     for (const block of page.blocks) {
@@ -71,7 +76,7 @@ export function computeStats(pages: IRPage[]): DocumentStats {
           sizeCounts.set(rounded, (sizeCounts.get(rounded) ?? 0) + span.text.length)
         }
 
-        const position: 'top' | 'bottom' | null = y1 <= topLimit ? 'top' : y0 >= bottomLimit ? 'bottom' : null
+        const position = bandPosition(y0, y1, page.height)
         if (position && lineText.trim()) {
           const key = `${position}:${normalizeBandText(lineText)}`
           const existing = bandCandidates.get(key)
@@ -108,7 +113,9 @@ export function computeStats(pages: IRPage[]): DocumentStats {
   const sizeHistogram: Record<string, number> = {}
   for (const [size, count] of sizeCounts) sizeHistogram[size] = count
 
-  const minOccurrences = Math.max(1, Math.ceil(pages.length * 0.25))
+  // Al menos 2 ocurrencias siempre — con pocas páginas, el 25% redondea a 1, y una línea que
+  // aparece una sola vez no es "recurrente" por definición.
+  const minOccurrences = Math.max(2, Math.ceil(pages.length * 0.25))
   const recurringBands: RecurringBand[] = []
   for (const candidate of bandCandidates.values()) {
     if (candidate.occurrences < minOccurrences) continue
