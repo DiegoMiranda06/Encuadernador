@@ -27,6 +27,8 @@ export interface IRBlock {
   height?: number
   /** Marcado por t07-headings. 1 = el tamaño de encabezado más grande del documento, 2 el siguiente, etc. */
   headingLevel?: number
+  /** Marcado por t10-footnotes: texto consistentemente más chico que el cuerpo del documento. */
+  isFootnote?: boolean
 }
 
 export interface IRPage {
