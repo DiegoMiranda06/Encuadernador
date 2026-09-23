@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ChapterList } from '@/components/preview/ChapterList'
 import { ChapterPreview } from '@/components/preview/ChapterPreview'
 import { TransformPanel } from '@/components/settings/TransformPanel'
@@ -9,6 +10,7 @@ import { renderChapterBody } from '@/epub/render'
 import { useChapterOverride } from '@/hooks/useChapterOverride'
 import { useChapterPreview } from '@/hooks/useChapterPreview'
 import { useJob } from '@/hooks/useJob'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { usePipeline } from '@/hooks/usePipeline'
 
 // TipTap + ProseMirror pesan bastante (~400 kB) — solo hacen falta si el usuario abre el editor.
@@ -20,7 +22,7 @@ export function JobSettingsPage() {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
 
   const { data: job } = useJob(jobId)
-  const { config, setEnabled, setParams, result, isApplying } = usePipeline(jobId)
+  const { config, setEnabled, setParams, result, isApplying, error: pipelineError } = usePipeline(jobId)
   const { save: saveOverride, isPending: isSavingOverride } = useChapterOverride(jobId)
 
   const chapterCount = result?.chapters.length ?? 0
@@ -28,10 +30,23 @@ export function JobSettingsPage() {
   const chapter = chapterIndex !== null ? result?.chapters[chapterIndex] : undefined
   const { data: xhtml, isLoading: isRenderLoading } = useChapterPreview(jobId, chapterIndex, result?.configHash)
 
+  useKeyboardShortcuts({
+    onPrev: () => setSelectedChapter((index) => Math.max(0, index - 1)),
+    onNext: () => setSelectedChapter((index) => Math.min(chapterCount - 1, index + 1)),
+    onEdit: () => chapter && setIsEditorOpen(true),
+  })
+
   async function handleSaveOverride(html: string) {
     if (!chapter) return
-    await saveOverride({ chapterKey: chapter.key, html })
-    setIsEditorOpen(false)
+    try {
+      await saveOverride({ chapterKey: chapter.key, html })
+      setIsEditorOpen(false)
+      toast.success('Capítulo guardado')
+    } catch (cause) {
+      toast.error('No se pudo guardar el capítulo', {
+        description: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
   }
 
   return (
@@ -58,6 +73,12 @@ export function JobSettingsPage() {
           </Link>
         </div>
       </header>
+
+      {pipelineError && (
+        <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-[12px] text-destructive">
+          No se pudo aplicar el pipeline: {pipelineError instanceof Error ? pipelineError.message : String(pipelineError)}
+        </div>
+      )}
 
       {(result?.orphanedOverrides.length ?? 0) > 0 && (
         <div className="border-b border-warning/40 bg-warning/10 px-4 py-2 text-[12px] text-warning">

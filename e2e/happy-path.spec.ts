@@ -20,8 +20,6 @@ test('flujo completo: subir, ajustar, confirmar idioma, editar, recortar portada
     await page.waitForURL(/#\/job\//, { timeout: 45_000 })
   })
 
-  const jobUrl = page.url()
-
   await test.step('cambiar un ajuste y ver que el reporte se actualiza', async () => {
     const toggle = page.locator('div.items-start', { hasText: 'Números de página' })
     await toggle.getByRole('switch').click()
@@ -36,7 +34,8 @@ test('flujo completo: subir, ajustar, confirmar idioma, editar, recortar portada
   })
 
   await test.step('editar el capítulo y guardar', async () => {
-    await page.goto(jobUrl)
+    await page.getByRole('link', { name: '← Ajustes' }).click()
+    await expect(page).toHaveURL(/\/job\/[^/]+$/)
     await page.getByRole('button', { name: 'Editar capítulo' }).click()
     const body = page.locator('.tiptap[contenteditable="true"]')
     await body.click()
@@ -59,7 +58,10 @@ test('flujo completo: subir, ajustar, confirmar idioma, editar, recortar portada
   })
 
   const download = await test.step('construir el EPUB, validar y descargar', async () => {
-    await page.goto(jobUrl.replace(/#\/job\/([^/]+).*/, '#/job/$1/exportar'))
+    await page.getByRole('link', { name: '← Ajustes' }).click()
+    await expect(page).toHaveURL(/\/job\/[^/]+$/)
+    await page.getByRole('link', { name: 'Exportar' }).click()
+    await expect(page).toHaveURL(/\/exportar$/)
     await page.getByRole('button', { name: 'Construir EPUB' }).click()
     await expect(page.getByText('Pasó las ocho comprobaciones sin errores ni avisos.')).toBeVisible({ timeout: 20_000 })
 

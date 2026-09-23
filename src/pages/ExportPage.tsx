@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ValidationReport } from '@/components/export/ValidationReport'
 import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
@@ -34,13 +35,22 @@ export function ExportPage() {
     if (!confirm('¿Borrar este trabajo ahora? El PDF, el IR y todo lo procesado se eliminan de este navegador y no se puede deshacer.')) {
       return
     }
-    await deleteJob(jobId)
-    navigate('/')
+    try {
+      await deleteJob(jobId)
+      navigate('/')
+    } catch (cause) {
+      toast.error('No se pudo borrar el trabajo', {
+        description: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
   }
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-8 text-text">
-      <h1 className="text-[18px] font-semibold">Exportar</h1>
+      <Link to={`/job/${jobId}`} className="text-[12px] text-primary hover:text-primary-hover">
+        ← Ajustes
+      </Link>
+      <h1 className="mt-3 text-[18px] font-semibold">Exportar</h1>
       <p className="mt-1 text-[13px] text-text-muted">
         Construye el EPUB final con los ajustes actuales y lo valida antes de descargarlo.
       </p>

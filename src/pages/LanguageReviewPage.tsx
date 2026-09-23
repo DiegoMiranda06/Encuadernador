@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useLanguageReview } from '@/hooks/useLanguageReview'
 import { usePipeline } from '@/hooks/usePipeline'
@@ -61,9 +62,22 @@ export function LanguageReviewPage() {
     })
   }
 
+  async function withErrorToast(action: () => Promise<unknown>) {
+    try {
+      await action()
+    } catch (cause) {
+      toast.error('No se pudo aplicar la decisión de idioma', {
+        description: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[760px] px-4 py-8 text-text">
-      <h1 className="text-[18px] font-semibold">Revisión de idioma</h1>
+      <Link to={`/job/${jobId}`} className="text-[12px] text-primary hover:text-primary-hover">
+        ← Ajustes
+      </Link>
+      <h1 className="mt-3 text-[18px] font-semibold">Revisión de idioma</h1>
       <p className="mt-1 text-[13px] text-text-muted">
         Nada se aplica sin que lo confirmes acá — ni los pasajes largos ni las frases cortas.
       </p>
@@ -78,7 +92,12 @@ export function LanguageReviewPage() {
           <section key={language} className="mt-6 rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-[15px] font-semibold capitalize">{languageName(language)}</h2>
-              <Button size="sm" variant="outline" disabled={isPending} onClick={() => confirm(ids, language)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isPending}
+                onClick={() => withErrorToast(() => confirm(ids, language))}
+              >
                 Confirmar todo en {languageName(language)}
               </Button>
             </div>
@@ -104,10 +123,12 @@ export function LanguageReviewPage() {
               <Button
                 size="sm"
                 disabled={isPending || selectedIds.length === 0}
-                onClick={async () => {
-                  await confirm(selectedIds, language)
-                  clearChecked(selectedIds)
-                }}
+                onClick={() =>
+                  withErrorToast(async () => {
+                    await confirm(selectedIds, language)
+                    clearChecked(selectedIds)
+                  })
+                }
               >
                 Confirmar seleccionadas
               </Button>
@@ -115,10 +136,12 @@ export function LanguageReviewPage() {
                 size="sm"
                 variant="ghost"
                 disabled={isPending || selectedIds.length === 0}
-                onClick={async () => {
-                  await dismiss(selectedIds, language)
-                  clearChecked(selectedIds)
-                }}
+                onClick={() =>
+                  withErrorToast(async () => {
+                    await dismiss(selectedIds, language)
+                    clearChecked(selectedIds)
+                  })
+                }
               >
                 Descartar seleccionadas
               </Button>
