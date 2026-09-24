@@ -11,6 +11,7 @@ import OrderedList from '@tiptap/extension-ordered-list'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { EditorContent, useEditor } from '@tiptap/react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { EditorToolbar } from './EditorToolbar'
 
@@ -40,6 +41,17 @@ interface ChapterEditorProps {
 
 export function ChapterEditor({ initialHtml, onSave, onCancel, isSaving }: ChapterEditorProps) {
   const editor = useEditor({ extensions: EXTENSIONS, content: initialHtml, immediatelyRender: false })
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return
+      event.preventDefault()
+      if (!isSaving && editor) onSave(editor.getHTML())
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editor, isSaving, onSave])
 
   return (
     <div className="flex h-full flex-col">

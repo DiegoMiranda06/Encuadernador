@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { CoverCropper } from '@/components/cover/CoverCropper'
 import { CoverPicker } from '@/components/cover/CoverPicker'
 import { KindlePreview } from '@/components/cover/KindlePreview'
@@ -32,12 +33,22 @@ export function CoverPage() {
 
   async function handleSave() {
     if (!candidate) return
-    await render({ candidateId: candidate.id, sourceBlob: candidate.blob, crop })
+    try {
+      await render({ candidateId: candidate.id, sourceBlob: candidate.blob, crop })
+      toast.success('Portada guardada')
+    } catch (cause) {
+      toast.error('No se pudo guardar la portada', {
+        description: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
   }
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-8 text-text">
-      <h1 className="text-[18px] font-semibold">Portada</h1>
+      <Link to={`/job/${jobId}`} className="text-[12px] text-primary hover:text-primary-hover">
+        ← Ajustes
+      </Link>
+      <h1 className="mt-3 text-[18px] font-semibold">Portada</h1>
       <p className="mt-1 text-[13px] text-text-muted">
         Elegí una candidata, recortala en proporción 1:1.6 y confirmá — así se ve en un Kindle.
       </p>
