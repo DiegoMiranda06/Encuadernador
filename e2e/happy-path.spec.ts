@@ -33,20 +33,21 @@ test('flujo completo: subir, ajustar, confirmar idioma, editar, recortar portada
     await expect(page.getByText(GERMAN_PASSAGE)).toHaveCount(0)
   })
 
-  await test.step('editar el capítulo y guardar', async () => {
+  await test.step('editar el capítulo directo en la vista central — autoguarda con Ctrl+S', async () => {
     await page.getByRole('link', { name: '← Ajustes' }).click()
     await expect(page).toHaveURL(/\/job\/[^/]+$/)
-    await page.getByRole('button', { name: 'Editar capítulo' }).click()
+
     const body = page.locator('.tiptap[contenteditable="true"]')
     await body.click()
     await page.keyboard.press('End')
     await page.keyboard.press('Enter')
     await page.keyboard.type(EDITED_SENTENCE)
-    await page.getByRole('button', { name: 'Guardar' }).click()
-    await expect(page.getByRole('dialog')).toBeHidden()
+    await page.keyboard.press('Control+s')
 
-    const preview = page.frameLocator('iframe[title="Vista previa del capítulo"]')
-    await expect(preview.getByText(EDITED_SENTENCE)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Guardando…')).toHaveCount(0, { timeout: 10_000 })
+    await expect(page.getByText('Cambios sin guardar')).toHaveCount(0)
+    await expect(page.getByText('Editado a mano')).toBeVisible({ timeout: 10_000 })
+    await expect(body.getByText(EDITED_SENTENCE)).toBeVisible()
   })
 
   await test.step('elegir y guardar una portada', async () => {
@@ -81,5 +82,12 @@ test('flujo completo: subir, ajustar, confirmar idioma, editar, recortar portada
 
     const xhtmlEntry = Object.entries(bytes).find(([name]) => name.endsWith('.xhtml'))
     expect(xhtmlEntry).toBeDefined()
+
+    // La corrección manual del paso anterior tiene que estar en el .epub final — no solo en pantalla.
+    const chapterXhtml = Object.entries(bytes)
+      .filter(([name]) => name.endsWith('.xhtml') && name.includes('chapter'))
+      .map(([, data]) => new TextDecoder().decode(data))
+      .join('\n')
+    expect(chapterXhtml).toContain(EDITED_SENTENCE)
   })
 })

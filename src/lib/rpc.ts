@@ -15,8 +15,6 @@ function getClient(): RpcClient {
 export const rpc = {
   extract: (file: ArrayBuffer, filename: string) => getClient().call('extract', { file, filename }),
   applyPipeline: (jobId: string, config: PipelineConfig) => getClient().call('applyPipeline', { jobId, config }),
-  renderChapter: (jobId: string, chapterIndex: number, configHash: string) =>
-    getClient().call('renderChapter', { jobId, chapterIndex, configHash }),
   confirmLanguage: (jobId: string, decisions: { blockId: string; decision: LanguageDecision['decision']; language: string }[]) =>
     getClient().call('confirmLanguage', { jobId, decisions }),
   saveOverride: (jobId: string, chapterKey: string, html: string) =>
