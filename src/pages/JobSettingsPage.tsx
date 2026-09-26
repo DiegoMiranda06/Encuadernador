@@ -7,6 +7,7 @@ import { TransformPanel } from '@/components/settings/TransformPanel'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { renderChapterBody } from '@/epub/render'
+import { useChapterAssetHrefs } from '@/hooks/useChapterAssetHrefs'
 import { useChapterOverride } from '@/hooks/useChapterOverride'
 import { useChapterPreview } from '@/hooks/useChapterPreview'
 import { useJob } from '@/hooks/useJob'
@@ -29,6 +30,7 @@ export function JobSettingsPage() {
   const chapterIndex = chapterCount > 0 ? Math.min(selectedChapter, chapterCount - 1) : null
   const chapter = chapterIndex !== null ? result?.chapters[chapterIndex] : undefined
   const { data: xhtml, isLoading: isRenderLoading } = useChapterPreview(jobId, chapterIndex, result?.configHash)
+  const resolveAssetHref = useChapterAssetHrefs(chapter)
 
   useKeyboardShortcuts({
     onPrev: () => setSelectedChapter((index) => Math.max(0, index - 1)),
@@ -106,11 +108,15 @@ export function JobSettingsPage() {
                 key={chapter.key}
                 initialHtml={
                   chapter.overrideHtml ??
-                  renderChapterBody(chapter, { language: result?.metadata.language ?? 'spa', resolveAssetHref: () => '' })
+                  renderChapterBody(chapter, {
+                    language: result?.metadata.language ?? 'spa',
+                    resolveAssetHref: (assetId) => resolveAssetHref(assetId) ?? '',
+                  })
                 }
                 onSave={handleSaveOverride}
                 onCancel={() => setIsEditorOpen(false)}
                 isSaving={isSavingOverride}
+                resolveAssetHref={resolveAssetHref}
               />
             </Suspense>
           )}

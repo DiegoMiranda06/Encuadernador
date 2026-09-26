@@ -3,44 +3,52 @@ import Bold from '@tiptap/extension-bold'
 import BulletList from '@tiptap/extension-bullet-list'
 import Document from '@tiptap/extension-document'
 import HardBreak from '@tiptap/extension-hard-break'
-import Heading from '@tiptap/extension-heading'
 import History from '@tiptap/extension-history'
 import Italic from '@tiptap/extension-italic'
 import ListItem from '@tiptap/extension-list-item'
 import OrderedList from '@tiptap/extension-ordered-list'
-import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { EditorContent, useEditor } from '@tiptap/react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { ChapterAside } from './extensions/aside'
+import { ChapterHeading } from './extensions/heading'
+import { ChapterImage } from './extensions/image'
+import { ChapterParagraph } from './extensions/paragraph'
 import { EditorToolbar } from './EditorToolbar'
-
-// El mismo esquema restringido que sanitizeChapterHtml() exige al guardar (lib/sanitize.ts) —
-// lo que el editor no puede producir, tampoco hace falta permitirlo al persistir.
-const EXTENSIONS = [
-  Document,
-  Paragraph,
-  Text,
-  Heading.configure({ levels: [1, 2, 3] }),
-  Bold,
-  Italic,
-  Blockquote,
-  BulletList,
-  OrderedList,
-  ListItem,
-  HardBreak,
-  History,
-]
 
 interface ChapterEditorProps {
   initialHtml: string
   onSave: (html: string) => void
   onCancel: () => void
   isSaving: boolean
+  /** Igual que renderChapterBody() — resuelve un assetId a la `blob:` URL que ya usa la preview. */
+  resolveAssetHref: (assetId: string) => string | undefined
 }
 
-export function ChapterEditor({ initialHtml, onSave, onCancel, isSaving }: ChapterEditorProps) {
-  const editor = useEditor({ extensions: EXTENSIONS, content: initialHtml, immediatelyRender: false })
+export function ChapterEditor({ initialHtml, onSave, onCancel, isSaving, resolveAssetHref }: ChapterEditorProps) {
+  // El esquema restringido que sanitizeChapterHtml() exige al guardar (lib/sanitize.ts) — lo que
+  // el editor no puede producir, tampoco hace falta permitirlo al persistir.
+  const extensions = useMemo(
+    () => [
+      Document,
+      ChapterParagraph,
+      Text,
+      ChapterHeading.configure({ levels: [1, 2, 3] }),
+      Bold,
+      Italic,
+      Blockquote,
+      BulletList,
+      OrderedList,
+      ListItem,
+      HardBreak,
+      History,
+      ChapterAside,
+      ChapterImage.configure({ resolveHref: resolveAssetHref }),
+    ],
+    [resolveAssetHref],
+  )
+  const editor = useEditor({ extensions, content: initialHtml, immediatelyRender: false })
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
