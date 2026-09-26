@@ -24,6 +24,8 @@ export const rpc = {
   extractCoverCandidates: (jobId: string) => getClient().call('extractCoverCandidates', { jobId }),
   renderCover: (jobId: string, candidateId: string, sourceBlob: Blob, crop: CropRect) =>
     getClient().call('renderCover', { jobId, candidateId, sourceBlob, crop }),
+  renderPageThumbnails: (jobId: string, pageIndices: number[]) =>
+    getClient().call('renderPageThumbnails', { jobId, pageIndices }),
   build: (jobId: string, configHash: string) => getClient().call('build', { jobId, configHash }),
   onExtractionProgress: (handler: (current: number, total: number) => void) =>
     getClient().onProgress((message) => {

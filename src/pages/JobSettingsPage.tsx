@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ChapterList } from '@/components/preview/ChapterList'
+import { PageThumbnailPanel } from '@/components/nav/PageThumbnailPanel'
 import { ChapterPreview } from '@/components/preview/ChapterPreview'
 import { TransformPanel } from '@/components/settings/TransformPanel'
 import { Button } from '@/components/ui/button'
@@ -91,11 +91,15 @@ export function JobSettingsPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <TransformPanel config={config} reports={result?.reports} onSetEnabled={setEnabled} onSetParams={setParams} />
-        <ChapterList
-          titles={result?.chapters.map((c) => c.title) ?? []}
-          selectedIndex={chapterIndex ?? 0}
-          onSelect={setSelectedChapter}
-        />
+        {job && result && (
+          <PageThumbnailPanel
+            jobId={jobId}
+            pageCount={job.pageCount}
+            chapters={result.chapters}
+            selectedChapterIndex={chapterIndex ?? 0}
+            onSelectChapter={setSelectedChapter}
+          />
+        )}
         <ChapterPreview xhtml={xhtml} isLoading={isRenderLoading} />
       </div>
 

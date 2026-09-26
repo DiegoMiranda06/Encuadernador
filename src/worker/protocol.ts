@@ -62,6 +62,20 @@ export interface RenderCoverInput {
 
 export type RenderCoverOutput = Blob
 
+export interface RenderPageThumbnailsInput {
+  jobId: string
+  pageIndices: number[]
+}
+
+export interface PageThumbnailData {
+  pageIndex: number
+  blob: Blob
+  width: number
+  height: number
+}
+
+export type RenderPageThumbnailsOutput = PageThumbnailData[]
+
 export interface BuildEpubInput {
   jobId: string
   /** Mismo contrato que renderChapter: hace falta un applyPipeline previo con este configHash cacheado. */
@@ -79,6 +93,7 @@ export interface WorkerRequestMap {
   saveOverride: { input: SaveOverrideInput; output: SaveOverrideOutput }
   extractCoverCandidates: { input: ExtractCoverCandidatesInput; output: ExtractCoverCandidatesOutput }
   renderCover: { input: RenderCoverInput; output: RenderCoverOutput }
+  renderPageThumbnails: { input: RenderPageThumbnailsInput; output: RenderPageThumbnailsOutput }
   build: { input: BuildEpubInput; output: BuildEpubOutput }
 }
 
