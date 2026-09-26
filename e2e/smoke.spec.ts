@@ -19,6 +19,5 @@ test('sube un PDF y ve la vista previa del primer capítulo', async ({ page }) =
 
   await page.waitForURL(/#\/job\//, { timeout: 45_000 })
 
-  const preview = page.frameLocator('iframe[title="Vista previa del capítulo"]')
-  await expect(preview.getByText(CHAPTER_1_BODY)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(CHAPTER_1_BODY)).toBeVisible({ timeout: 15_000 })
 })

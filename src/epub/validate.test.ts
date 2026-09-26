@@ -148,7 +148,10 @@ describe('validateEpub', () => {
   it('detecta un src remoto en un capítulo', () => {
     const files = unzipSync(buildValidEpub())
     const chapterText = new TextDecoder().decode(files['OEBPS/chapters/chapter-0.xhtml'])
-    const withRemote = chapterText.replace('<img src="../images/img1.png" alt=""/>', '<img src="https://example.com/x.png" alt=""/>')
+    const withRemote = chapterText.replace(
+      '<img src="../images/img1.png" data-asset-id="img1" alt=""/>',
+      '<img src="https://example.com/x.png" data-asset-id="img1" alt=""/>',
+    )
     files['OEBPS/chapters/chapter-0.xhtml'] = strToU8(withRemote)
     const bytes = zipFromFiles(files)
     const report = validateEpub(bytes)

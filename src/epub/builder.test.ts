@@ -106,7 +106,7 @@ describe('buildEpub', () => {
     const files = unzipSync(bytes)
     const chapter0 = u8(files['OEBPS/chapters/chapter-0.xhtml'])
     expect(chapter0).toContain('<h1 id="b0">Capítulo Uno</h1>')
-    expect(chapter0).toContain('<img src="../images/img1.png" alt=""/>')
+    expect(chapter0).toContain('<img src="../images/img1.png" data-asset-id="img1" alt=""/>')
   })
 
   it('el cover se guarda tal cual, sin recomprimir', () => {

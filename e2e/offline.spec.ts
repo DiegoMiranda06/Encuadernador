@@ -26,6 +26,5 @@ test('procesa un PDF sin conexión tras la primera visita', async ({ page, conte
   })
   await page.waitForURL(/#\/job\//, { timeout: 45_000 })
 
-  const preview = page.frameLocator('iframe[title="Vista previa del capítulo"]')
-  await expect(preview.getByText(CHAPTER_1_BODY)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(CHAPTER_1_BODY)).toBeVisible({ timeout: 15_000 })
 })

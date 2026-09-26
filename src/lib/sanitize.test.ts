@@ -18,8 +18,33 @@ describe('sanitizeChapterHtml', () => {
     expect(sanitizeChapterHtml(html)).toBe('<p>Texto</p>')
   })
 
-  it('quita etiquetas fuera del allowlist (img, a, span, style) aunque no sean peligrosas por sí solas', () => {
-    const html = '<p>Texto <img src="x" onerror="alert(1)"/> con <a href="javascript:alert(1)">link</a> y <span style="color:red">span</span>.</p>'
-    expect(sanitizeChapterHtml(html)).toBe('<p>Texto  con link y span.</p>')
+  it('quita etiquetas fuera del allowlist (a, span, style) aunque no sean peligrosas por sí solas', () => {
+    const html = '<p>Texto con <a href="javascript:alert(1)">link</a> y <span style="color:red">span</span>.</p>'
+    expect(sanitizeChapterHtml(html)).toBe('<p>Texto con link y span.</p>')
+  })
+
+  it('permite <img> solo con data-asset-id y alt — nunca src, aunque venga con onerror', () => {
+    const html = '<img data-asset-id="abc123" alt="" src="https://evil.example/x.png" onerror="alert(1)"/>'
+    const result = sanitizeChapterHtml(html)
+    expect(result).toContain('data-asset-id="abc123"')
+    expect(result).not.toContain('src=')
+    expect(result).not.toContain('onerror')
+  })
+
+  it('autocierra <br> e <img> — XML válido, no HTML de string crudo', () => {
+    const html = '<p>Línea uno<br>Línea dos</p><img data-asset-id="x" alt=""/>'
+    const result = sanitizeChapterHtml(html)
+    expect(result).toMatch(/<br\s*\/>/)
+    expect(result).not.toContain('<br>')
+  })
+
+  it('conserva id, class y xml:lang en encabezados y párrafos', () => {
+    const html = '<h1 id="p000b00" xml:lang="deu">Título</h1><p class="first" xml:lang="deu">Texto.</p>'
+    expect(sanitizeChapterHtml(html)).toBe(html)
+  })
+
+  it('conserva <aside epub:type="footnote"> con su id', () => {
+    const html = '<aside epub:type="footnote" id="fn-p003b01"><p>Nota al pie.</p></aside>'
+    expect(sanitizeChapterHtml(html)).toBe(html)
   })
 })

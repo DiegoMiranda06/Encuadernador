@@ -60,7 +60,31 @@ function renderTextBlock(block: IRBlock, paragraphState: { firstRendered: boolea
 function renderImageBlock(block: IRBlock, resolveAssetHref: (assetId: string) => string): string {
   if (!block.assetId) return ''
   const href = escapeHtml(resolveAssetHref(block.assetId))
-  return `<div class="img-block"><img src="${href}" alt=""/></div>`
+  const assetId = escapeHtml(block.assetId)
+  // data-asset-id además de src: el editor manual (ChapterEditor) lo necesita para reconocer la
+  // imagen al cargar este HTML como punto de partida — nunca guarda `src` (una `blob:` URL no
+  // sirve de nada persistida), solo esto. No cambia nada de lo que ya se veía.
+  return `<div class="img-block"><img src="${href}" data-asset-id="${assetId}" alt=""/></div>`
+}
+
+const IMG_TAG = /<img\b[^>]*\/>/g
+const ASSET_ID_ATTR = /data-asset-id="([^"]*)"/
+
+/**
+ * El editor manual (ChapterEditor) nunca guarda una URL `blob:` en el override — no sobrevive a
+ * recargar la página y no tiene sentido en el XHTML final. Guarda `data-asset-id` en su lugar
+ * (mismo esquema que el sanitizador exige, lib/sanitize.ts) y acá se resuelve a la URL real,
+ * igual que renderImageBlock() para el resto del capítulo. Reemplazo por texto, no por DOM: el
+ * override ya es XML válido (sanitizeChapterHtml serializa con XMLSerializer) y `DOMParser` no
+ * está garantizado dentro del Web Worker en todos los navegadores.
+ */
+function resolveOverrideImages(html: string, resolveAssetHref: (assetId: string) => string): string {
+  return html.replace(IMG_TAG, (tag) => {
+    const assetId = ASSET_ID_ATTR.exec(tag)?.[1]
+    if (!assetId) return tag
+    const href = escapeHtml(resolveAssetHref(assetId))
+    return tag.replace('/>', `src="${href}"/>`)
+  })
 }
 
 /** El cuerpo (sin el shell XHTML) — lo reusa el editor manual (Paso 9) para arrancar con el mismo texto que ya se ve en la preview. */
@@ -85,7 +109,9 @@ export function renderChapterBody(chapter: Chapter, options: RenderChapterOption
  */
 export function renderChapterXhtml(chapter: Chapter, options: RenderChapterOptions): string {
   const title = escapeHtml(chapter.title)
-  const body = chapter.overrideHtml ?? renderChapterBody(chapter, options)
+  const body = chapter.overrideHtml
+    ? resolveOverrideImages(chapter.overrideHtml, options.resolveAssetHref)
+    : renderChapterBody(chapter, options)
 
   return [
     '<?xml version="1.0" encoding="utf-8"?>',

@@ -1,8 +1,20 @@
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { useState } from 'react'
 import type { PipelineConfig } from '@/model/config'
 import type { TransformReport } from '@/transforms/base'
 import { TRANSFORM_ORDER, type TransformId } from '@/transforms/registry'
 import { GapFactorControl } from './GapFactorControl'
 import { TransformToggle } from './TransformToggle'
+
+const COLLAPSED_STORAGE_KEY = 'encuadernador:ajustes-colapsado'
+
+function readCollapsedPreference(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 const LABELS: Record<TransformId, { label: string; description: string }> = {
   't01-unicode': { label: 'Normalización Unicode', description: 'Unifica acentos y ligaduras (ﬁ, ﬂ) a su forma estándar.' },
@@ -32,11 +44,56 @@ interface TransformPanelProps {
   onSetParams: (id: TransformId, params: Record<string, unknown>) => void
 }
 
-/** Panel de ajustes de 360px fijos — un toggle por transform, en el orden canónico de registry.ts. */
+/**
+ * Panel de ajustes de 360px — un toggle por transform, en el orden canónico de registry.ts.
+ * Colapsable a un riel angosto para darle espacio al documento (la preferencia se recuerda en
+ * localStorage); ningún ajuste se pierde al colapsar, solo se deja de ver la lista.
+ */
 export function TransformPanel({ config, reports, onSetEnabled, onSetParams }: TransformPanelProps) {
+  const [collapsed, setCollapsed] = useState(readCollapsedPreference)
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(COLLAPSED_STORAGE_KEY, next ? '1' : '0')
+      } catch {
+        // localStorage puede fallar en privado/bloqueado — la preferencia simplemente no persiste.
+      }
+      return next
+    })
+  }
+
+  if (collapsed) {
+    return (
+      <div className="flex h-full w-12 shrink-0 flex-col items-center border-r border-border bg-surface py-3">
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title="Mostrar ajustes"
+          aria-label="Mostrar ajustes"
+          className="rounded-sm p-1.5 text-text-muted transition-surface hover:bg-surface-2 hover:text-text"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full w-[360px] shrink-0 flex-col overflow-y-auto border-r border-border bg-surface p-4">
-      <h2 className="mb-2 text-[15px] font-semibold text-text">Ajustes</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-text">Ajustes</h2>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title="Contraer ajustes"
+          aria-label="Contraer ajustes"
+          className="rounded-sm p-1 text-text-muted transition-surface hover:bg-surface-2 hover:text-text"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
+      </div>
       {TRANSFORM_ORDER.map((id) => {
         const { label, description } = LABELS[id]
         const gapFactor = typeof config[id].params.gapFactor === 'number' ? config[id].params.gapFactor : 1.6

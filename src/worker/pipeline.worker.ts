@@ -2,11 +2,10 @@
 import { buildEpub } from '@/epub/builder'
 import { extractCoverCandidates } from '@/cover/extract'
 import { renderCover } from '@/cover/render'
-import { renderChapterXhtml } from '@/epub/render'
 import { extractDocument } from '@/ir/extract'
+import { renderPageThumbnails } from '@/thumbnails/render'
 import type { JobRecord } from '@/storage/db'
 import {
-  getAssetBlob,
   getAssetsForDocument,
   getCover,
   getIRDocument,
@@ -30,11 +29,11 @@ type Handlers = {
   ) => WorkerRequestMap[M]['output'] | Promise<WorkerRequestMap[M]['output']>
 }
 
-// Ambos se pierden al recargar la página — aceptable, recalcular es rápido (Paso 5 del blueprint).
+// Se pierden al recargar la página — aceptable, recalcular es rápido (Paso 5 del blueprint).
 const pipelineCache = new Map<string, ApplyPipelineOutput>()
-// `blob:` URLs de imagen, por assetId — estables mientras dure la pestaña, para no crear una
-// nueva por cada renderChapter (preview y build final resuelven igual, solo cambia esta URL).
-const assetUrlCache = new Map<string, string>()
+// Miniaturas de página ya renderizadas, por `${jobId}:${pageIndex}` — mismo criterio: se pierde
+// al recargar, recalcular una miniatura es rápido.
+const thumbnailCache = new Map<string, { blob: Blob; width: number; height: number }>()
 
 // Ni las decisiones de idioma ni los overrides cambian `config` — el configHash no se mueve
 // solo, pero el resultado cacheado para ese jobId ya no vale (regla no negociable #8: nada se
@@ -43,21 +42,6 @@ function invalidatePipelineCache(jobId: string): void {
   for (const key of pipelineCache.keys()) {
     if (key.startsWith(`${jobId}:`)) pipelineCache.delete(key)
   }
-}
-
-async function resolveAssetHrefs(assetIds: Iterable<string>): Promise<Map<string, string>> {
-  const hrefByAssetId = new Map<string, string>()
-  await Promise.all(
-    [...assetIds].map(async (assetId) => {
-      if (!assetUrlCache.has(assetId)) {
-        const blob = await getAssetBlob(assetId)
-        if (blob) assetUrlCache.set(assetId, URL.createObjectURL(blob))
-      }
-      const href = assetUrlCache.get(assetId)
-      if (href) hrefByAssetId.set(assetId, href)
-    }),
-  )
-  return hrefByAssetId
 }
 
 const handlers: Handlers = {
@@ -111,25 +95,6 @@ const handlers: Handlers = {
     return { ok: true }
   },
 
-  async renderChapter({ jobId, chapterIndex, configHash }) {
-    const cached = pipelineCache.get(`${jobId}:${configHash}`)
-    if (!cached) throw new Error('No hay un resultado de pipeline cacheado para este configHash — llamá a applyPipeline primero.')
-
-    const chapter = cached.chapters[chapterIndex]
-    if (!chapter) throw new Error(`El trabajo ${jobId} no tiene un capítulo en el índice ${chapterIndex}`)
-
-    const assetIds = new Set<string>()
-    for (const block of chapter.blocks) {
-      if (block.type === 'image' && block.assetId) assetIds.add(block.assetId)
-    }
-    const hrefByAssetId = await resolveAssetHrefs(assetIds)
-
-    return renderChapterXhtml(chapter, {
-      language: cached.metadata.language,
-      resolveAssetHref: (assetId) => hrefByAssetId.get(assetId) ?? '',
-    })
-  },
-
   async extractCoverCandidates({ jobId }) {
     const [sourceFile, document] = await Promise.all([getSourceFile(jobId), getIRDocument(jobId)])
     if (!sourceFile) throw new Error(`No se encontró el PDF original del trabajo ${jobId}`)
@@ -144,6 +109,26 @@ const handlers: Handlers = {
     const cover = await renderCover(sourceBlob, crop)
     await Promise.all([saveCover(jobId, cover), saveJobCoverCrop(jobId, { candidateId, ...crop })])
     return cover
+  },
+
+  async renderPageThumbnails({ jobId, pageIndices }) {
+    const cacheKeys = pageIndices.map((pageIndex) => `${jobId}:${pageIndex}`)
+    const missing = pageIndices.filter((_, i) => !thumbnailCache.has(cacheKeys[i]))
+
+    if (missing.length > 0) {
+      const sourceFile = await getSourceFile(jobId)
+      if (!sourceFile) throw new Error(`No se encontró el PDF original del trabajo ${jobId}`)
+      const buffer = await sourceFile.arrayBuffer()
+      for (const thumbnail of renderPageThumbnails(buffer, missing)) {
+        thumbnailCache.set(`${jobId}:${thumbnail.pageIndex}`, thumbnail)
+      }
+    }
+
+    return pageIndices.map((pageIndex) => {
+      const cached = thumbnailCache.get(`${jobId}:${pageIndex}`)
+      if (!cached) throw new Error(`No se pudo renderizar la página ${pageIndex} del trabajo ${jobId}`)
+      return { pageIndex, ...cached }
+    })
   },
 
   async build({ jobId, configHash }) {

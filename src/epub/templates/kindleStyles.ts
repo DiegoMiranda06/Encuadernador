@@ -16,6 +16,12 @@ h2 { font-size: 1.3em; }
 h3 { font-size: 1.1em; }
 div.img-block { text-align: center; margin: 1em 0; page-break-inside: avoid; }
 div.img-block img { max-width: 100%; height: auto; }
+img[data-asset-id] { display: block; max-width: 100%; height: auto; margin: 1em auto; page-break-inside: avoid; }
 figcaption { font-size: 0.85em; font-style: italic; text-align: center; margin-top: 0.4em; }
 blockquote { margin: 1em 2em; font-style: italic; }
+aside[epub|type="footnote"] { font-size: 0.9em; border-top: 1px solid #ccc; margin-top: 1em; padding-top: 0.5em; }
+p.align-left { text-align: left; }
+p.align-center { text-align: center; text-indent: 0; }
+p.align-right { text-align: right; }
+p.align-justify { text-align: justify; }
 `.trim()

@@ -3,15 +3,15 @@ import { useEffect } from 'react'
 interface KeyboardShortcuts {
   onPrev?: () => void
   onNext?: () => void
-  onEdit?: () => void
 }
 
 /**
- * Atajos del panel de ajustes: ←/→ para moverse entre capítulos, E para abrir el editor.
- * Se ignoran mientras el foco está en un campo de texto o en contenido editable, para no
- * interferir con escribir (el editor de capítulos maneja su propio ⌘S por separado).
+ * ←/→ para moverse entre capítulos desde el panel de miniaturas o de ajustes. Se ignoran
+ * mientras el foco está en un campo de texto o en contenido editable — la vista central es
+ * editable siempre, así que esto es lo único que evita que mover el cursor con las flechas
+ * dentro del texto navegue de capítulo por accidente (el editor maneja su propio ⌘S aparte).
  */
-export function useKeyboardShortcuts({ onPrev, onNext, onEdit }: KeyboardShortcuts) {
+export function useKeyboardShortcuts({ onPrev, onNext }: KeyboardShortcuts) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
@@ -20,10 +20,9 @@ export function useKeyboardShortcuts({ onPrev, onNext, onEdit }: KeyboardShortcu
 
       if (event.key === 'ArrowLeft') onPrev?.()
       else if (event.key === 'ArrowRight') onNext?.()
-      else if (event.key.toLowerCase() === 'e') onEdit?.()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onPrev, onNext, onEdit])
+  }, [onPrev, onNext])
 }

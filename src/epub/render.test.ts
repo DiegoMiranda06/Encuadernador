@@ -56,7 +56,9 @@ describe('renderChapterXhtml', () => {
       title: 'Capítulo Uno',
       blocks: [{ id: 'b4', type: 'image', bbox: [0, 0, 100, 100], assetId: 'img1' }],
     }
-    expect(renderChapterXhtml(chapter, options)).toContain('<div class="img-block"><img src="blob:img1" alt=""/></div>')
+    expect(renderChapterXhtml(chapter, options)).toContain(
+      '<div class="img-block"><img src="blob:img1" data-asset-id="img1" alt=""/></div>',
+    )
   })
 
   it('envuelve negrita y cursiva, y escapa caracteres especiales', () => {

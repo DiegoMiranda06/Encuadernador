@@ -23,14 +23,6 @@ export interface ApplyPipelineInput {
 
 export type ApplyPipelineOutput = PipelineRunResult & { configHash: string }
 
-export interface RenderChapterInput {
-  jobId: string
-  chapterIndex: number
-  configHash: string
-}
-
-export type RenderChapterOutput = string
-
 export interface ConfirmLanguageInput {
   jobId: string
   decisions: { blockId: string; decision: LanguageDecision['decision']; language: string }[]
@@ -62,9 +54,23 @@ export interface RenderCoverInput {
 
 export type RenderCoverOutput = Blob
 
+export interface RenderPageThumbnailsInput {
+  jobId: string
+  pageIndices: number[]
+}
+
+export interface PageThumbnailData {
+  pageIndex: number
+  blob: Blob
+  width: number
+  height: number
+}
+
+export type RenderPageThumbnailsOutput = PageThumbnailData[]
+
 export interface BuildEpubInput {
   jobId: string
-  /** Mismo contrato que renderChapter: hace falta un applyPipeline previo con este configHash cacheado. */
+  /** Hace falta un applyPipeline previo con este configHash ya cacheado. */
   configHash: string
 }
 
@@ -74,11 +80,11 @@ export type BuildEpubOutput = Blob
 export interface WorkerRequestMap {
   extract: { input: ExtractInput; output: ExtractOutput }
   applyPipeline: { input: ApplyPipelineInput; output: ApplyPipelineOutput }
-  renderChapter: { input: RenderChapterInput; output: RenderChapterOutput }
   confirmLanguage: { input: ConfirmLanguageInput; output: ConfirmLanguageOutput }
   saveOverride: { input: SaveOverrideInput; output: SaveOverrideOutput }
   extractCoverCandidates: { input: ExtractCoverCandidatesInput; output: ExtractCoverCandidatesOutput }
   renderCover: { input: RenderCoverInput; output: RenderCoverOutput }
+  renderPageThumbnails: { input: RenderPageThumbnailsInput; output: RenderPageThumbnailsOutput }
   build: { input: BuildEpubInput; output: BuildEpubOutput }
 }
 

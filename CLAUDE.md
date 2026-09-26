@@ -1,6 +1,6 @@
 # Encuadernador
 
-Herramienta web personal, 100% navegador, que convierte PDFs a EPUB limpios y listos para Kindle: pantalla de ajustes en vivo para saltos de línea e imágenes, detección de idiomas distintos al principal, y editor de portada. Sin backend — el PDF nunca sale del navegador.
+Herramienta web personal, 100% navegador, que convierte PDFs a EPUB limpios y listos para Kindle: pantalla de ajustes en vivo para saltos de línea e imágenes, detección de idiomas distintos al principal, edición directa del contenido convertido, y editor de portada. Sin backend — el PDF nunca sale del navegador.
 
 ## Commands
 
@@ -29,23 +29,25 @@ La extracción corre una sola vez dentro de un Web Worker y se guarda en Indexed
 
 - `src/ir/` — Extracción con mupdf.js. `extract.ts` corre dentro del worker
 - `src/transforms/` — Doce transforms IR→DocModel puras. `registry.ts` fija el orden
-- `src/model/` — `DocModel` y `PipelineConfig`
-- `src/epub/` — `render.ts` (compartido por preview y build), `builder.ts` (fflate), `validate.ts` (validador propio)
+- `src/model/` — `DocModel`, `PipelineConfig`, `pageMap.ts` (página del PDF → capítulo que la contiene)
+- `src/epub/` — `render.ts` (compartido por la vista editable y el build), `builder.ts` (fflate), `validate.ts` (validador propio)
 - `src/cover/` — Extracción de candidatas, recorte, cuantización a escala de grises
+- `src/thumbnails/` — Miniaturas de página (mupdf.js) para el panel de navegación, estilo Acrobat
 - `src/language/` — Detección de idioma en dos capas (pasajes con franc-min, frases con listas propias)
 - `src/worker/` — `pipeline.worker.ts` (entry del worker), `protocol.ts` (tipos RPC), `rpcClient.ts` (cliente con Promesas en el hilo principal)
 - `src/storage/` — IndexedDB. `jobs.ts` es el equivalente al manifiesto de un trabajo
-- `src/components/settings/` y `preview/` — La pantalla principal
+- `src/components/settings/`, `nav/` (miniaturas) y `editor/` — La pantalla principal
 
 ### Flujo de datos
 
-Subida → `ArrayBuffer` pasado al worker (nunca a un servidor) → extracción → IR en IndexedDB → el usuario mueve un toggle → Zustand actualiza al instante → debounce 300 ms → RPC `applyPipeline` al worker → el worker lee el IR, aplica transforms activas + overrides, cachea por `configHash`, devuelve `DocModel` + reports → la UI invalida la query de preview → el iframe recarga el XHTML del capítulo (misma función de render que usará el build final).
+Subida → `ArrayBuffer` pasado al worker (nunca a un servidor) → extracción → IR en IndexedDB → el usuario mueve un toggle → `useGuardedPipeline` simula el pipeline candidato si hay capítulos editados a mano (avisa antes de generar un huérfano nuevo) → Zustand actualiza al instante → debounce 300 ms → RPC `applyPipeline` al worker → el worker lee el IR, aplica transforms activas + overrides, cachea por `configHash`, devuelve `DocModel` + reports → la UI invalida la query del pipeline → la vista central (editable siempre, `renderChapterBody()` como contenido inicial) se actualiza con el nuevo capítulo. Escribir en esa vista autoguarda con debounce (o ⌘S) — el HTML saneado vuelve al worker por `saveOverride`, mismo `renderChapterXhtml()` que usará el build final.
 
 ### Patrones clave
 
 - **El IR es inmutable.** Se genera una vez; las transforms devuelven estructuras nuevas
-- **Preview y build comparten `renderChapter()`.** Si divergen, el usuario ajusta contra una mentira
+- **La vista editable y el build comparten `render.ts`.** Si divergen, el usuario edita contra una mentira
 - **Los overrides se indexan por `chapter.key`** (hash del título normalizado), nunca por índice — sobreviven a que el pipeline reparta los capítulos distinto
+- **Un capítulo con override queda protegido:** los toggles siguen recalculando sus `blocks`, pero el render usa el HTML editado tal cual — nunca lo pisa en silencio. `useGuardedPipeline` avisa ANTES de un cambio que dejaría un override huérfano
 - **Toda llamada al worker manda el `PipelineConfig` completo**, nunca un parche parcial
 - **Toda transform devuelve un `TransformReport`** con cuántos cambios hizo — se muestra en la UI
 - **El idioma nunca se marca por una sola palabra.** Siempre secuencias de 2+ palabras, y con confirmación del usuario para la capa de frases
@@ -68,7 +70,7 @@ Subida → `ArrayBuffer` pasado al worker (nunca a un servidor) → extracción 
 ### Tipografía
 - UI: Inter Variable — 13px base, títulos 15/18/22px peso 600
 - Mono: JetBrains Mono 12px
-- Preview del libro: Literata 16px
+- Contenido del libro (vista editable y preview de portada): Literata 16px — no Bookerly (fuente exclusiva de Amazon para Kindle, sin licencia para embeber en web o EPUB de terceros; Literata es la alternativa deliberada, TypeTogether, SIL OFL, diseñada para lectura extendida)
 
 ### Estilo
 - Radio: 6px general, 8px paneles, 4px badges
@@ -76,7 +78,9 @@ Subida → `ArrayBuffer` pasado al worker (nunca a un servidor) → extracción 
 - Sin sombras salvo overlays. Bordes de 1px definen las superficies
 - Transiciones 120 ms solo en `background-color`, `border-color`, `opacity`
 - Foco siempre visible: `outline: 2px solid var(--primary); outline-offset: 2px`
-- Panel de ajustes 360px fijos, preview `flex-1` con `max-width: 760px`
+- Panel de ajustes 360px, colapsable a un riel de 48px (preferencia en localStorage) — nunca pierde estado, solo se oculta
+- Panel de miniaturas de página 140px, estilo Acrobat — entre ajustes y el documento
+- Documento (vista editable) `flex-1` con `max-width: 760px`, centrado (`mx-auto`) en el espacio que quede
 
 ## Environment Variables
 
@@ -93,7 +97,7 @@ Ninguna es secreta — es un sitio estático sin backend.
 1. **El PDF nunca sale del navegador.** Ninguna petición de red debe llevar contenido del PDF. Es la propiedad que hace posible desplegar esto gratis en GitHub Pages y la que más valor le da al usuario
 2. **Nunca fijar `font-family` ni `font-size` en el `body` del CSS del EPUB.** Pisa las preferencias del lector del Kindle
 3. **El IR no se muta jamás.** Cada transform devuelve una estructura nueva
-4. **Preview y build usan la misma función de render.** Cualquier divergencia es un bug crítico
+4. **La vista editable y el build usan la misma función de render.** Cualquier divergencia es un bug crítico
 5. **Todo HTML del editor se sanea con `dompurify` antes de persistir.** Sin excepciones, sin "es solo para mí"
 6. **Cero backend.** Si aparece la tentación de un endpoint, una API o un servidor, el diseño se ha desviado
 7. **Toda transform tiene toggle y `TransformReport`.** Nada de arreglos invisibles

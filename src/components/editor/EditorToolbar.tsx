@@ -22,6 +22,13 @@ function ToolbarButton({ label, active, onClick }: ToolbarButtonProps) {
   )
 }
 
+const ALIGNMENTS = [
+  { value: 'left', label: 'Izquierda' },
+  { value: 'center', label: 'Centrar' },
+  { value: 'right', label: 'Derecha' },
+  { value: 'justify', label: 'Justificar' },
+] as const
+
 /** Esquema restringido: solo lo que sanitizeChapterHtml() deja pasar — ver lib/sanitize.ts. */
 export function EditorToolbar({ editor }: { editor: Editor }) {
   return (
@@ -54,6 +61,15 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
         active={editor.isActive('orderedList')}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
+      <span className="mx-1 w-px self-stretch bg-border" aria-hidden="true" />
+      {ALIGNMENTS.map(({ value, label }) => (
+        <ToolbarButton
+          key={value}
+          label={label}
+          active={editor.isActive('paragraph', { align: value })}
+          onClick={() => editor.chain().focus().updateAttributes('paragraph', { align: value }).run()}
+        />
+      ))}
     </div>
   )
 }
